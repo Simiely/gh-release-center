@@ -4,7 +4,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as store from "./lib/store.mjs";
 import { parseRepoUrl, fetchReleases, fetchRepoInfo } from "./lib/github.mjs";
@@ -59,7 +59,7 @@ function serveStatic(req, res, urlPath) {
 }
 
 // ---- API ----
-async function apiSoftware(req, res) {
+async function apiSoftware(req, res, github) {
   // GET /api/software — 返回含缓存 releases(本地已拉取的部分),前端免网络直接渲染
   if (req.method === "GET") {
     const list = store.load().software.map((s) => ({
@@ -78,11 +78,13 @@ async function apiSoftware(req, res) {
     const parsed = parseRepoUrl(body.repoUrl || body.repo || "");
     if (!parsed) return json(res, 400, { ok: false, code: "bad_repo", message: "无法解析仓库链接,支持 owner/repo 或 github.com 链接" });
     const settings = store.getSettings();
-    const info = await fetchRepoInfo({ ...parsed, token: settings.githubToken, proxy: settings.proxy });
-    const r = store.createSoftware({ name: body.name || (info.ok ? info.info.fullName : `${parsed.owner}/${parsed.repo}`), ...parsed, category: body.category, note: body.note });
+    // 先校验仓库存在(404/网络错误 → 拒绝添加,不静默创建空条目)
+    const info = await github.fetchRepoInfo({ ...parsed, token: settings.githubToken, proxy: settings.proxy });
+    if (!info.ok) return json(res, info.status || 502, { ok: false, code: info.code, message: `仓库校验失败: ${info.message}` });
+    const r = store.createSoftware({ name: body.name || info.info.fullName, ...parsed, category: body.category, note: body.note });
     if (!r.ok) return json(res, 409, r);
-    // 新增后立即拉第一页
-    const first = await fetchReleases({ ...parsed, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
+    // 新增后立即拉第一页(失败不阻断,缓存留空可稍后刷新)
+    const first = await github.fetchReleases({ ...parsed, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
     if (first.ok) {
       r.item.cache = { total: first.hasMore ? null : first.releases.length, hasMore: first.hasMore, releases: first.releases };
       store.save();
@@ -92,14 +94,32 @@ async function apiSoftware(req, res) {
   return json(res, 405, { ok: false, message: "method not allowed" });
 }
 
-async function apiSoftwareId(req, res, id, qs) {
-  // GET /api/software/:id/releases?page=N — 增量拉取并合并缓存
-  if (req.url.includes("/releases") && req.method === "GET") {
+/** 单软件操作:按 sub 路径段区分( [] → PUT/DELETE 编辑删除; ["releases"] → 增量拉取; ["refresh"] → 清缓存重拉 ) */
+async function apiSoftwareItem(req, res, id, sub, qs, github) {
+  const action = sub[0] || "";
+  if (!action) {
+    // PUT /api/software/:id — 编辑
+    if (req.method === "PUT") {
+      let body;
+      try { body = await readBody(req); } catch (e) { return json(res, 400, { ok: false, message: e.message }); }
+      const r = store.updateSoftware(id, body);
+      if (!r.ok) return json(res, 404, r);
+      return json(res, 200, r);
+    }
+    // DELETE /api/software/:id
+    if (req.method === "DELETE") {
+      const r = store.deleteSoftware(id);
+      if (!r.ok) return json(res, 404, r);
+      return json(res, 200, r);
+    }
+    return json(res, 405, { ok: false, message: "method not allowed" });
+  }
+  if (action === "releases" && req.method === "GET") {
     const item = store.find(id);
     if (!item) return json(res, 404, { ok: false, code: "notfound", message: "软件不存在" });
     const page = Math.max(1, parseInt(qs.get("page") || "1", 10) || 1);
     const settings = store.getSettings();
-    const r = await fetchReleases({ owner: item.owner, repo: item.repo, page, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
+    const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
     if (!r.ok) return json(res, r.status || 502, r);
     // 合并去重(按 tag)
     const merged = new Map(item.cache.releases.map((x) => [x.tag, x]));
@@ -111,32 +131,18 @@ async function apiSoftwareId(req, res, id, qs) {
     store.save();
     return json(res, 200, { ok: true, releases, hasMore: r.hasMore, total: item.cache.total });
   }
-  // POST /api/software/:id/refresh — 清缓存重拉第一页
-  if (req.url.includes("/refresh") && req.method === "POST") {
+  if (action === "refresh" && req.method === "POST") {
     const item = store.find(id);
     if (!item) return json(res, 404, { ok: false, code: "notfound", message: "软件不存在" });
     const settings = store.getSettings();
-    const r = await fetchReleases({ owner: item.owner, repo: item.repo, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
+    const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
     if (!r.ok) return json(res, r.status || 502, r);
     item.cache = { total: r.hasMore ? null : r.releases.length, hasMore: r.hasMore, releases: r.releases };
     store.save();
     return json(res, 200, { ok: true, releases: r.releases, hasMore: r.hasMore, total: item.cache.total });
   }
-  // PUT /api/software/:id — 编辑
-  if (req.method === "PUT") {
-    let body;
-    try { body = await readBody(req); } catch (e) { return json(res, 400, { ok: false, message: e.message }); }
-    const r = store.updateSoftware(id, body);
-    if (!r.ok) return json(res, 404, r);
-    return json(res, 200, r);
-  }
-  // DELETE /api/software/:id
-  if (req.method === "DELETE") {
-    const r = store.deleteSoftware(id);
-    if (!r.ok) return json(res, 404, r);
-    return json(res, 200, r);
-  }
-  return json(res, 405, { ok: false, message: "method not allowed" });
+  if (action === "releases" || action === "refresh") return json(res, 405, { ok: false, message: "method not allowed" });
+  return json(res, 404, { ok: false, code: "bad_route", message: "未知子路径" });
 }
 
 async function apiSettings(req, res) {
@@ -154,26 +160,42 @@ async function apiSettings(req, res) {
 }
 
 // ---- 路由 ----
-const server = http.createServer(async (req, res) => {
-  try {
-    const u = new URL(req.url, "http://localhost");
-    const { pathname, searchParams } = u;
+/** 创建 HTTP 服务。deps 用于测试注入 fake 的 GitHub 客户端;默认用真实实现 */
+export function createServer(deps = {}) {
+  const github = {
+    fetchReleases: deps.fetchReleases || fetchReleases,
+    fetchRepoInfo: deps.fetchRepoInfo || fetchRepoInfo,
+  };
 
-    if (pathname === "/health") return json(res, 200, { ok: true });
-    if (pathname === "/api/software") return await apiSoftware(req, res);
-    if (pathname.startsWith("/api/settings")) return await apiSettings(req, res);
-    if (pathname.startsWith("/api/software/")) {
-      const rest = pathname.slice("/api/software/".length);
-      const id = rest.split("/")[0];
-      return await apiSoftwareId(req, res, id, searchParams);
+  return http.createServer(async (req, res) => {
+    try {
+      const u = new URL(req.url, "http://localhost");
+      const { pathname, searchParams } = u;
+
+      if (pathname === "/health") return json(res, 200, { ok: true });
+      if (pathname === "/api/software") return await apiSoftware(req, res, github);
+      if (pathname === "/api/settings") return await apiSettings(req, res);
+      // 精确分段:/api/software/<id>[/releases|/refresh]
+      const PREFIX = "/api/software/";
+      if (pathname.startsWith(PREFIX)) {
+        const seg = pathname.slice(PREFIX.length).split("/").filter(Boolean);
+        if (seg.length >= 1) return await apiSoftwareItem(req, res, seg[0], seg.slice(1), searchParams, github);
+        return json(res, 404, { ok: false, code: "bad_route", message: "未知路由" });
+      }
+      if (pathname.startsWith("/api/")) return json(res, 404, { ok: false, message: "unknown api" });
+      return serveStatic(req, res, pathname);
+    } catch (e) {
+      return json(res, 500, { ok: false, message: e.message });
     }
-    if (pathname.startsWith("/api/")) return json(res, 404, { ok: false, message: "unknown api" });
-    return serveStatic(req, res, pathname);
-  } catch (e) {
-    return json(res, 500, { ok: false, message: e.message });
-  }
-});
+  });
+}
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`gh-release-center running on ${port}`);
-});
+// ---- 启动(仅主模块执行;测试 import 时不监听) ----
+export function start(server) {
+  server.listen(port, "127.0.0.1", () => {
+    console.log(`gh-release-center running on ${port}`);
+  });
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) start(createServer());

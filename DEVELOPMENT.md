@@ -37,6 +37,15 @@ server.mjs (入口薄层:静态 + API 路由)
 - 解决：页面加载先 `const BASE = window.__BASE__ || "";`，所有 fetch/资源引用用 `BASE + ...`
 - 预防：新增前端请求时统一走 `api(path, opts)` 封装
 
+### 问题：加载更多点击无反应 + 页面闪到顶部（v0.1.1 修复）
+
+**TL;DR**：page 按 DOM 渲染行数算（被过滤/无资产的行不渲染），导致 page 回退重复拉已拉过的页；加载成功后 loadAll 全量重建导致滚动丢失。
+
+- 问题：点「加载更多」→ 闪顶 → 划回来列表无变化
+- 根因：① `card.querySelectorAll(".rel").length` 是**渲染行数**（无资产/平台过滤的行不渲染），小于缓存 release 数 → `page = floor(行数/perPage)+1` 偏小 → 请求已拉过的页 → 后端按 tag 合并去重 0 新增；② 加载成功后 `loadAll()` 清空重建 innerHTML → 滚动位置重置
+- 解决：① 卡片加 `data-count=缓存 release 总数`，page 据此计算；无资产 release 也渲染版本行（行数恒 = 缓存数）；② 加载更多改为**单卡片增量重建**（`softwareMap` 内存快照 + `card.replaceWith`），滚动用 `window.scrollY` 兜底
+- 预防：分页"页码"永远基于数据总数而非 DOM 观测；列表更新优先局部渲染，避免全量 innerHTML 重建
+
 ### 问题：GitHub 分页「加载更多」与本地缓存如何配合
 
 **TL;DR**：per_page 用设置的增量数，page 从缓存已拉页数 +1 开始；响应 `Link` 头 `rel="next"` 判断是否还有更多。
@@ -46,6 +55,16 @@ server.mjs (入口薄层:静态 + API 路由)
 - 解决：增量拉取——每页 `settings.perPage` 个，前端「加载更多」→ `?page=N` 拉下一页合并入缓存；总数从 Link 头解析；「刷新」清缓存重拉第一页
 - 预防：缓存落地 data.json，重启不丢；403 时返回 code=rate_limit，UI 提示配 Token
 
+### 问题：新增软件不校验仓库存在（v0.1.1 修复）
+
+**TL;DR**：POST 前先 fetchRepoInfo 校验，仓库不存在/网络错误直接拒绝，不再静默创建空条目。
+
+- 问题：填不存在的仓库也"添加成功"，列表里出现永远拉不到数据的空卡片
+- 根因：fetchRepoInfo 失败只影响默认名，不阻断 createSoftware
+- 解决：`if (!info.ok) return 4xx/502 { code, message }`，前端 toast 展示"仓库校验失败: ..."
+- 预防：新增类接口必须先验证外键存在性，失败即拒绝，不给用户留"半成功"状态
+
 ## 开发记录
 
 - 2026-08-06：项目初始化，四件套 + manifest + 骨架
+- 2026-08-06（v0.1.1）：修复加载更多 page 计算 + 增量渲染 + 新增校验仓库存在；路由精确匹配重构；补路由层单测（22 例全绿）
