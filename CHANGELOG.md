@@ -1,5 +1,14 @@
 # CHANGELOG.md
 
+## v0.1.7 (2026-08-06)
+
+### 卡片排序（名称 / 更新日期 / Star + 级联）
+- **顶栏排序选择器**：按更新日期（默认）/ 按 Star / 按名称
+- **级联排序**：主排序相同时按更新时间 → 名称兜底（name 主排序时名称 → 更新时间 → Star）
+- **Star 采集**：POST /api/refresh-stars（独立刷新）+ check-updates 顺带刷新（点「全部刷新」一次拿全量）；fetchRepoInfo 增加 stargazers_count；GET /api/software 响应带 stars
+- **卡片 Star 徽标**：时间行右侧显示 ★ N（≥1000 显示 1.2k 格式），无数据不占位
+- **修复平台工具写入 EPERM**：沙箱内启动的 tools-center 平台 ACL 受限传导给工具子进程（写 data.json 被拒），沙箱外重启平台恢复正常
+
 ## v0.1.6 (2026-08-06)
 
 ### 卡片简介 + 删除仓库内设计规范

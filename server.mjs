@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as store from "./lib/store.mjs";
-import { parseRepoUrl, fetchReleases } from "./lib/github.mjs";
+import { parseRepoUrl, fetchReleases, fetchRepoInfo } from "./lib/github.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -65,6 +65,7 @@ async function apiSoftware(req, res, github) {
     const list = store.load().software.map((s) => ({
       id: s.id, name: s.name, owner: s.owner, repo: s.repo,
       category: s.category, note: s.note, createdAt: s.createdAt,
+      stars: s.stars ?? null,
       total: s.cache?.total ?? null,
       hasMore: !!(s.cache && s.cache.hasMore),
       releases: s.cache?.releases ?? [],
@@ -160,6 +161,7 @@ async function apiSettings(req, res) {
 export function createServer(deps = {}) {
   const github = {
     fetchReleases: deps.fetchReleases || fetchReleases,
+    fetchRepoInfo: deps.fetchRepoInfo || fetchRepoInfo,
   };
 
   return http.createServer(async (req, res) => {
@@ -170,18 +172,37 @@ export function createServer(deps = {}) {
       if (pathname === "/health") return json(res, 200, { ok: true });
       if (pathname === "/api/software" || pathname === "/api/software/") return await apiSoftware(req, res, github);
       if (pathname === "/api/settings") return await apiSettings(req, res);
-      // POST /api/check-updates — 串行检查全部软件最新 tag,对比缓存,返回有新版的 id 列表
+      // POST /api/check-updates — 串行检查全部软件最新 tag + 顺带刷新 star 数
       if (pathname === "/api/check-updates" && req.method === "POST") {
         const settings = store.getSettings();
+        const data = store.load();
         const hasNew = [];
-        for (const s of store.load().software) {
+        for (const s of data.software) {
           const r = await github.fetchReleases({ owner: s.owner, repo: s.repo, page: 1, perPage: 1, token: settings.githubToken, proxy: settings.proxy });
           if (r.ok && r.releases.length) {
             const cached = s.cache?.releases?.[0]?.tag;
             if (cached && cached !== r.releases[0].tag) hasNew.push(s.id);
           }
+          // 顺带刷新 star(失败静默,不影响更新检查)
+          const info = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
+          if (info.ok) s.stars = info.info.stars ?? null;
         }
+        store.save();
         return json(res, 200, { ok: true, hasNew });
+      }
+      // POST /api/refresh-stars — 串行拉取全部仓库 star 数并缓存
+      if (pathname === "/api/refresh-stars" && req.method === "POST") {
+        const settings = store.getSettings();
+        const data = store.load();
+        let updated = 0;
+        const failed = [];
+        for (const s of data.software) {
+          const r = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
+          if (r.ok) { s.stars = r.info.stars ?? null; updated++; }
+          else failed.push({ id: s.id, code: r.code, message: r.message });
+        }
+        if (updated) store.save();
+        return json(res, 200, { ok: true, updated, failed });
       }
       // 精确分段:/api/software/<id>[/releases|/refresh]
       const PREFIX = "/api/software/";

@@ -90,6 +90,22 @@ server.mjs (入口薄层:静态 + API 路由)
 - 2026-08-06（v0.1.3）：UI 重构——网格卡片 + 悬浮详情弹层（最新版主卡/LATEST 徽标/下载优先）+ 顶栏搜索/平台/分类筛选 + 批量添加；后端 check-updates API（NEW 角标数据源）；24 例全绿
 - 2026-08-06（v0.1.4）：配色改版——主色 #ff9292 系 + 互补青 #92ffff 辅助色 + 深色文字 #2d1414（ff9292 底上白字对比度 2.15:1 FAIL，深字 9.78:1 AAA）
 - 2026-08-06（v0.1.5）：磨砂玻璃 UI——背景光斑层 + 顶栏/卡片/弹层 backdrop-filter 玻璃化（@supports 降级）+ 卡片信息瘦身 6→4 项（仓库行移入弹层）+ 网格加大 225px/18px
+- 2026-08-06（v0.1.6）：卡片显示简介（.note 2 行截断，fNote 编辑已有）；移除仓库内 DESIGN.md
+- 2026-08-06（v0.1.7）：排序（名称/更新时间/Star 级联）+ Star 采集（refresh-stars + check-updates 顺带）+ 卡片 ★ 徽标；修复平台工具写入 EPERM；25 例全绿
+
+### 问题：平台托管工具写 data.json 报 EPERM（v0.1.7 排查）
+
+**TL;DR**：tools-center 平台进程若在沙箱内启动，其 ACL 限制会传导给工具子进程 → 工具进程写 CAP_STORAGE_DIR 数据文件被拒（读正常、写 EPERM）；**沙箱外重启平台即可恢复**。
+
+- 症状：POST /api/check-updates、PUT /api/settings 等任何触发 store.save() 的操作报 `EPERM: operation not permitted, open '...data.json'`；GET 正常；手动 node 写同一文件成功
+- 排查路径：文件非只读 → 手动写成功（排除文件/目录权限）→ 确认工具进程是平台子进程（spawn 无特殊限制）→ 平台进程在沙箱内启动 → 沙箱外重启平台 → 写入恢复
+- 预防：**本地起平台用 dangerouslyDisableSandbox（沙箱外）**，与 git push 同级别的系统操作；工具进程权限 = 平台进程权限 + env
+
+### 排序级联规则（v0.1.7）
+- name：名称 localeCompare(zh) → 更新时间 → Star
+- date（默认）：更新时间 → Star → 名称
+- stars：Star → 更新时间 → 名称
+- Star 为 null（未采集）时按 -1 排最后，不阻塞排序
 
 ### UI 磨砂玻璃记录（v0.1.5）
 - 玻璃三要素：半透明底色 + backdrop-filter blur/saturate + 1px 白描边 + inset 顶部高光

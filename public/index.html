@@ -44,6 +44,9 @@
   .logo b{color:var(--pink)}
   .inp{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--fg);font-size:13px;outline:none;min-width:160px;flex:1}
   .inp:focus{border-color:var(--pink)}
+  .sel{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--fg);font-size:12.5px;outline:none;cursor:pointer}
+  .sel:focus{border-color:var(--pink)}
+  .sel option{background:var(--panel2);color:var(--fg)}
   .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
   .seg button{border:0;background:transparent;color:var(--dim);padding:7px 13px;font-size:12.5px;cursor:pointer;border-radius:7px;transition:background .15s}
   .seg button.on{background:var(--pink);color:var(--on-pink);font-weight:500}
@@ -70,7 +73,8 @@
   .nm{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .st{margin-top:5px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim)}
   .note{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .time{font-size:11px;color:var(--faint);margin-top:6px}
+  .time{font-size:11px;color:var(--faint);margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .time .star{color:var(--amber);font-weight:500}
   .ver{font-family:Consolas,monospace;color:var(--green);background:rgba(109,213,140,.09);border:1px solid rgba(109,213,140,.25);padding:1px 7px;border-radius:6px;font-size:11.5px}
   .ver.none{color:var(--faint);background:transparent;border-color:var(--line)}
   .new{position:absolute;top:10px;right:10px;background:var(--coral);color:var(--on-pink);font-size:10px;font-weight:500;padding:2px 7px;border-radius:8px}
@@ -144,6 +148,11 @@
   <div class="bar">
     <div class="logo">软件<b>下载</b>中心</div>
     <input class="inp" id="q" placeholder="搜索软件 / 仓库 / 备注…">
+    <select class="sel" id="bSort" title="排序方式">
+      <option value="date">按更新日期</option>
+      <option value="stars">按 Star</option>
+      <option value="name">按名称</option>
+    </select>
     <div class="seg" id="plat"><span class="lbl">平台</span><button data-p="all" class="on">全部</button><button data-p="win">Win</button><button data-p="mac">Mac</button><button data-p="linux">Lin</button></div>
     <button class="btn" id="bAdd">+ 添加</button>
     <button class="btn" id="bBatch">批量添加</button>
@@ -212,6 +221,7 @@ const PLAT_NAME = { win: "Windows", mac: "macOS", linux: "Linux" };
 
 let state = {
   q: "", cat: "all", plat: "all",   // 筛选
+  sortBy: "date",                   // date | stars | name(级联:主排序相同→更新时间→名称)
   software: [],                      // 全量软件(含缓存 releases)
   map: {},                           // id -> software 快照
   hasNew: {},                        // id -> true(有新版)
@@ -255,6 +265,18 @@ function catColor(cat) {
 function tileText(name) { return (name || "?").slice(0, 2).toUpperCase(); }
 function platOf(s) { return (s.releases || []).flatMap((r) => (r.assets || []).map((a) => a.platform)); }
 function latestOf(s) { return (s.releases || [])[0] || null; }
+function byDate(s) { const r = s.releases?.[0]?.publishedAt; return r ? Date.parse(r) : (s.createdAt || 0); }
+function fmtStars(n) { return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); }
+/* 级联排序:主排序相同 → 更新时间 → 名称兜底 */
+function cmpSort(a, b) {
+  const da = byDate(a), db = byDate(b);
+  const sa = a.stars ?? -1, sb = b.stars ?? -1;
+  const na = (a.name || "").localeCompare(b.name || "", "zh");
+  const byDateCmp = db - da, byStarsCmp = sb - sa;
+  if (state.sortBy === "name") return na || byDateCmp || byStarsCmp;
+  if (state.sortBy === "stars") return byStarsCmp || byDateCmp || na;
+  return byDateCmp || byStarsCmp || na;
+}
 
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; }
@@ -290,6 +312,7 @@ async function checkUpdates() {
     state.hasNew = {};
     (d.hasNew || []).forEach((id) => (state.hasNew[id] = true));
     render();
+    await loadAll();
     toast(d.hasNew?.length ? `发现 ${d.hasNew.length} 个软件有新版` : "全部是最新版本");
   } catch (e) { toast(e.message, true); }
   finally { state.checking = false; btn.disabled = false; btn.textContent = "全部刷新"; }
@@ -324,7 +347,7 @@ function card(s) {
       ${newHtml}
     </div>
     ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
-    <div class="time">${fmtTime(time)}</div>
+    <div class="time"><span>${fmtTime(time)}</span>${s.stars != null ? `<span class="star">★ ${fmtStars(s.stars)}</span>` : ""}</div>
   </div>`;
 }
 function render() {
@@ -335,7 +358,7 @@ function render() {
     if (state.plat !== "all" && !platOf(s).includes(state.plat)) return false;
     return true;
   });
-  $("grid").innerHTML = shown.map(card).join("");
+  $("grid").innerHTML = shown.sort(cmpSort).map(card).join("");
   $("empty").hidden = shown.length > 0;
   $("emptyText").textContent = state.software.length ? "没有匹配的软件 — 试试清空筛选条件" : "清单为空，点击右上角「+ 添加」开始收录";
   renderTabs();
@@ -526,6 +549,7 @@ $("btnBatchGo").addEventListener("click", async () => {
 
 /* 全部刷新 + 设置 */
 $("bRefreshAll").addEventListener("click", checkUpdates);
+$("bSort").addEventListener("change", (e) => { state.sortBy = e.target.value; render(); });
 $("bSet").addEventListener("click", openSettings);
 $("btnSetCancel").addEventListener("click", () => $("ovSet").classList.remove("show"));
 $("btnSetSave").addEventListener("click", async () => {
