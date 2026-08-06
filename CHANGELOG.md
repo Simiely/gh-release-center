@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## v0.2.0 (2026-08-06)
+
+### 适配 tools-center v0.12.0 V2 新规范
+- **V2 manifest 声明制**：`runtime: "node"` + `capabilities: ["storage"]` + `entry/port/health` 显式声明（v0.1.x 已内置，本版正式确认并对照平台校验规则验证通过）
+- **SDK 语义对齐**：存储边界 = CAP_STORAGE_DIR（`capStorageDir()` 同语义），独立运行降级 `cwd/.data`——与平台 lib/sdk.js 规范一致
+- **平台 v0.12.0 实测**：工具在最新平台下 running + health ok；capabilities 注册表（browser/storage/network）校验通过；数据读写正常
+- 功能状态：v0.1.9 全量功能（网格/弹层/筛选/排序/Star/简介双来源/磨砂玻璃）
+
 ## v0.1.9 (2026-08-06)
 
 ### 卡片简介双来源（自动获取 + 自定义优先）
