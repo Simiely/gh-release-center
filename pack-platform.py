@@ -33,6 +33,8 @@ def collect(root, rel=""):
                 continue
             out.extend(collect(root, r))
         else:
+            if name.endswith(".zip"):  # 打包产物自身不进包
+                continue
             out.append((r, p))
     return out
 

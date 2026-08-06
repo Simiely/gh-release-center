@@ -199,10 +199,19 @@ test("webdav: 配置保存/密码脱敏/清空", async () => {
   assert.equal(r.data.has, true);
   assert.equal(r.data.pass, undefined, "config 不返回密码明文");
   assert.equal(r.data.defaultUrl, "http://192.168.2.1:6086/", "返回默认 WebDAV 地址");
-  // GET /api/settings 同样脱敏
+  // GET /api/settings 同样脱敏(webdavPass + githubToken)
   r = await req("GET", "/api/settings");
   assert.equal(r.data.settings.webdavHas, true);
   assert.equal(r.data.settings.webdavPass, undefined);
+  assert.equal(r.data.settings.githubTokenHas, false);
+  assert.equal(r.data.settings.githubToken, undefined, "settings 不返回 token 明文");
+  // PUT /api/settings 不回传 settings 全量(凭证防泄漏)
+  r = await req("PUT", "/api/settings", { githubToken: "ghp_123" });
+  assert.equal(r.data.ok, true);
+  assert.equal(r.data.settings, undefined, "PUT 响应不包含 settings");
+  assert.equal(r.data.githubToken, undefined, "PUT 响应不包含 token");
+  r = await req("GET", "/api/settings");
+  assert.equal(r.data.settings.githubTokenHas, true, "token 已保存");
   // 留空密码保存 → 保留原密码
   await req("POST", "/api/webdav/config", { url: "https://dav.example.com/dav/", user: "u1", pass: "" });
   r = await req("GET", "/api/webdav/config");

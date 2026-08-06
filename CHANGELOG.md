@@ -1,5 +1,18 @@
 # CHANGELOG.md
 
+## v0.3.4 (2026-08-06)
+
+### 全盘审核安全加固（代码审查 12 项）
+- 🔴 **PUT /api/settings 不再回传 settings 全量**（此前空 body PUT 会回显 webdavPass/githubToken 明文）
+- 🔴 **静态文件路径边界校验**（PUBLIC_DIR + path.sep，防 /../publicX/ 前缀绕过）+ decodeURIComponent 异常兜底
+- 🟡 **GET /api/settings githubToken 同步脱敏**（只回 githubTokenHas；Token 留空保存 = 保留原值，防误清）
+- 🟡 **WebDAV 下载结构校验**（云端必须是合法 JSON 且含 software 数组，损坏数据拒绝覆盖）
+- 🟡 **check-updates 前端超时放宽 90s**（16 仓库串行请求不再被 25s 切断）
+- 🟢 **store 原子写**（temp + rename，进程被杀不截断 data.json）
+- 🟢 **下载链接协议校验**（仅 http/https，防恶意数据注入 javascript:）
+- 🟢 **manifest.json 补齐 version/dataFiles**（与 tool.json 双通道一致）；pack-platform.py 排除打包产物
+- 测试扩展：settings 脱敏/token 保留/PUT 无明文断言；27 例全绿
+
 ## v0.3.3 (2026-08-06)
 
 ### WebDAV 默认地址（与积分仪表盘同款 192 内网）

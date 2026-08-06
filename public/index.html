@@ -252,7 +252,7 @@ let state = {
 
 async function api(path, opts = {}) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 25000);
+  const timer = setTimeout(() => ctrl.abort(), opts.timeout || 25000);
   try {
     const res = await fetch(BASE + "/api" + path, {
       headers: { "Content-Type": "application/json" }, ...opts, signal: ctrl.signal,
@@ -330,7 +330,7 @@ async function checkUpdates() {
   const btn = $("bRefreshAll");
   btn.disabled = true; btn.textContent = "检查中…";
   try {
-    const d = await api("/check-updates", { method: "POST" });
+    const d = await api("/check-updates", { method: "POST", timeout: 90000 });
     state.hasNew = {};
     (d.hasNew || []).forEach((id) => (state.hasNew[id] = true));
     render();
@@ -453,7 +453,8 @@ function closeEdit() { $("ovEdit").classList.remove("show"); state.editingId = n
 async function openSettings() {
   try {
     const d = await api("/settings");
-    $("fToken").value = d.settings.githubToken || "";
+    $("fToken").value = "";
+    $("fToken").placeholder = d.settings.githubTokenHas ? "已设置,留空保留" : "ghp_... 提高速率并支持私有仓库";
     $("fProxy").value = d.settings.proxy || "";
     $("fPerPage").value = d.settings.perPage || 3;
     $("fWdUrl").value = d.settings.webdavUrl || "";
@@ -487,7 +488,9 @@ $("ovDetail").addEventListener("click", async (e) => {
   if (e.target === $("ovDetail")) return closeDetail();
   const dl = e.target.closest("[data-dl]");
   if (dl) {
-    window.open(dl.dataset.url, "_blank", "noopener");
+    const u = dl.dataset.url || "";
+    if (!/^https?:\/\//i.test(u)) { toast("非 http(s) 链接,已拦截", true); return; }
+    window.open(u, "_blank", "noopener");
     toast("开始下载 " + dl.dataset.name);
     return;
   }

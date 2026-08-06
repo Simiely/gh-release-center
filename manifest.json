@@ -4,9 +4,12 @@
   "desc": "采集指定 GitHub 仓库的 Release 下载链接，统一入口访问下载",
   "group": "工具",
   "icon": "📥",
+  "type": "app",
+  "version": "0.3.4",
   "runtime": "node",
   "capabilities": ["storage"],
   "entry": "server.mjs",
   "port": 8130,
-  "health": "/health"
+  "health": "/health",
+  "dataFiles": []
 }

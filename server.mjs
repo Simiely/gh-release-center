@@ -49,10 +49,12 @@ async function readBody(req) {
 
 // ---- 静态文件 ----
 function serveStatic(req, res, urlPath) {
-  let p = decodeURIComponent(urlPath);
+  let p;
+  try { p = decodeURIComponent(urlPath); } catch { return json(res, 400, { ok: false, message: "bad url encoding" }); }
   if (p === "/" || p === "") p = "/index.html";
   const full = path.normalize(path.join(PUBLIC_DIR, p));
-  if (!full.startsWith(PUBLIC_DIR)) return json(res, 403, { ok: false, message: "forbidden" });
+  // 边界校验:归一化后必须在 PUBLIC_DIR 内(防 /../publicX/ 前缀绕过)
+  if (full !== PUBLIC_DIR && !full.startsWith(PUBLIC_DIR + path.sep)) return json(res, 403, { ok: false, message: "forbidden" });
   if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return json(res, 404, { ok: false, message: "not found" });
   const ext = path.extname(full).toLowerCase();
   res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": "no-cache" });
@@ -146,16 +148,25 @@ async function apiSoftwareItem(req, res, id, sub, qs, github) {
 async function apiSettings(req, res) {
   if (req.method === "GET") {
     const s = { ...store.getSettings() };
-    // 密码脱敏:只返回是否已设置,不返回明文
+    // 凭证脱敏:只返回是否已设置,不返回明文
     s.webdavHas = !!s.webdavPass;
     delete s.webdavPass;
+    s.githubTokenHas = !!s.githubToken;
+    delete s.githubToken;
     return json(res, 200, { ok: true, settings: s });
   }
   if (req.method === "PUT") {
     let body;
     try { body = await readBody(req); } catch (e) { return json(res, 400, { ok: false, message: e.message }); }
-    const r = store.updateSettings(body);
-    return json(res, 200, r);
+    // Token 留空 = 保留原值(与 WebDAV 密码同语义,防误清)
+    if (body.githubToken !== undefined && String(body.githubToken).trim() !== "") {
+      body.githubToken = String(body.githubToken).trim();
+    } else {
+      delete body.githubToken;
+    }
+    store.updateSettings(body);
+    // 不回传 settings 全量(避免凭证明文回显)
+    return json(res, 200, { ok: true, message: "设置已保存" });
   }
   return json(res, 405, { ok: false, message: "method not allowed" });
 }
@@ -197,7 +208,10 @@ async function apiWebdav(req, res, action) {
     try {
       const text = await webdav.downloadFile(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json");
       if (text === null) return json(res, 404, { ok: false, message: "云端没有数据文件,请先上传" });
-      JSON.parse(text); // 校验远端数据合法性
+      // 结构校验:必须是 {software:[...]} 合法清单,防损坏数据静默覆盖
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { return json(res, 502, { ok: false, message: "云端数据不是合法 JSON,已拒绝覆盖" }); }
+      if (!Array.isArray(parsed.software)) return json(res, 502, { ok: false, message: "云端数据结构无效(缺 software 数组),已拒绝覆盖" });
       const file = DATA_FILE();
       const bak = file + ".bak-" + Date.now();
       try { fs.copyFileSync(file, bak); } catch {}
