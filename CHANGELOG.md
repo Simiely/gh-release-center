@@ -4,6 +4,9 @@
 
 ### 适配 tools-center v0.12.0 V2 新规范
 - **V2 manifest 声明制**：`runtime: "node"` + `capabilities: ["storage"]` + `entry/port/health` 显式声明（v0.1.x 已内置，本版正式确认并对照平台校验规则验证通过）
+- **新增 tool.json（发布包标准）**：平台 zip 导入优先读取 tool.json——含 `version: "0.2.0"`（覆盖升级对比/降级保护）+ `dataFiles: []`（数据在 CAP_STORAGE_DIR，工具目录无数据文件，升级不清数据）
+- **平台版发布包**：`gh-release-center-platform-v0.2.0.zip`（tool.json + manifest.json + 源码 + 四件套文档），已上传 Release v0.2.0 资产 + 存桌面（中文名副本）
+- 平台实测：zip 上传 201 → 工具创建 → 16 个软件数据保留 ✓
 - **SDK 语义对齐**：存储边界 = CAP_STORAGE_DIR（`capStorageDir()` 同语义），独立运行降级 `cwd/.data`——与平台 lib/sdk.js 规范一致
 - **平台 v0.12.0 实测**：工具在最新平台下 running + health ok；capabilities 注册表（browser/storage/network）校验通过；数据读写正常
 - 功能状态：v0.1.9 全量功能（网格/弹层/筛选/排序/Star/简介双来源/磨砂玻璃）
