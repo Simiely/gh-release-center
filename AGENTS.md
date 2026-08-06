@@ -1,6 +1,6 @@
 # AGENTS.md · 项目规则
 
-> 📌 **文档基线**：2026-08-06（commit `a92186f`）v0.2.0 完成（tool.json 发布包标准 + 平台版 zip）
+> 📌 **文档基线**：2026-08-06（commit `dec6f57`）v0.3.0 WebDAV 云同步完成
 > **更新文档/代码后，请更新此行**（日期 + 新 commit hash），并在 CHANGELOG 追加版本
 
 ## 技术栈
