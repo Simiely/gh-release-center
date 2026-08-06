@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as store from "./lib/store.mjs";
 import { parseRepoUrl, fetchReleases, fetchRepoInfo } from "./lib/github.mjs";
+import * as webdav from "./lib/webdav.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -144,7 +145,10 @@ async function apiSoftwareItem(req, res, id, sub, qs, github) {
 
 async function apiSettings(req, res) {
   if (req.method === "GET") {
-    const s = store.getSettings();
+    const s = { ...store.getSettings() };
+    // 密码脱敏:只返回是否已设置,不返回明文
+    s.webdavHas = !!s.webdavPass;
+    delete s.webdavPass;
     return json(res, 200, { ok: true, settings: s });
   }
   if (req.method === "PUT") {
@@ -154,6 +158,58 @@ async function apiSettings(req, res) {
     return json(res, 200, r);
   }
   return json(res, 405, { ok: false, message: "method not allowed" });
+}
+
+/** WebDAV 云同步:config 读写(密码脱敏)/test/upload/download/clear
+ *  远端目录 = 工具 id 目录,数据文件 = data.json(本地 CAP_STORAGE_DIR 的完整数据) */
+const WEBDAV_DIR = "gh-release-center";
+const DATA_FILE = () => path.join(store.storageDir(), "data.json");
+
+async function apiWebdav(req, res, action) {
+  const s = store.getSettings();
+  if (action === "config" && req.method === "GET") {
+    return json(res, 200, { ok: true, url: s.webdavUrl, user: s.webdavUser, has: !!s.webdavPass });
+  }
+  if (action === "config" && req.method === "POST") {
+    let body;
+    try { body = await readBody(req); } catch (e) { return json(res, 400, { ok: false, message: e.message }); }
+    const patch = { webdavUrl: String(body.url || "").trim(), webdavUser: String(body.user || "").trim() };
+    // 密码:显式传非空 → 更新;传空且已有密码 → 保留;传空且无密码 → 保持空
+    if (body.pass !== undefined && String(body.pass) !== "") patch.webdavPass = String(body.pass);
+    const r = store.updateSettings(patch);
+    return json(res, 200, { ok: true, message: "WebDAV 配置已保存" });
+  }
+  if (req.method !== "POST") return json(res, 405, { ok: false, message: "method not allowed" });
+  if (action === "test") {
+    try { await webdav.testConnection(s.webdavUrl, s.webdavUser, s.webdavPass); return json(res, 200, { ok: true, message: "连接成功" }); }
+    catch (e) { return json(res, 502, { ok: false, message: "连接失败: " + e.message }); }
+  }
+  if (action === "upload") {
+    if (!s.webdavUrl) return json(res, 400, { ok: false, message: "未配置 WebDAV 地址" });
+    try {
+      await webdav.uploadFile(s.webdavUrl, s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json", JSON.stringify(store.load(), null, 2));
+      return json(res, 200, { ok: true, message: "已上传到云端" });
+    } catch (e) { return json(res, 502, { ok: false, message: "上传失败: " + e.message }); }
+  }
+  if (action === "download") {
+    if (!s.webdavUrl) return json(res, 400, { ok: false, message: "未配置 WebDAV 地址" });
+    try {
+      const text = await webdav.downloadFile(s.webdavUrl, s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json");
+      if (text === null) return json(res, 404, { ok: false, message: "云端没有数据文件,请先上传" });
+      JSON.parse(text); // 校验远端数据合法性
+      const file = DATA_FILE();
+      const bak = file + ".bak-" + Date.now();
+      try { fs.copyFileSync(file, bak); } catch {}
+      fs.writeFileSync(file, text);
+      store.resetCache();
+      return json(res, 200, { ok: true, message: "已从云端恢复(本地已备份)" });
+    } catch (e) { return json(res, 502, { ok: false, message: "下载失败: " + e.message }); }
+  }
+  if (action === "clear") {
+    store.updateSettings({ webdavUrl: "", webdavUser: "", webdavPass: "" });
+    return json(res, 200, { ok: true, message: "WebDAV 配置已清空" });
+  }
+  return json(res, 404, { ok: false, message: "unknown webdav action" });
 }
 
 // ---- 路由 ----
@@ -203,6 +259,11 @@ export function createServer(deps = {}) {
         }
         if (updated) store.save();
         return json(res, 200, { ok: true, updated, failed });
+      }
+      // WebDAV 云同步:/api/webdav/<config|test|upload|download|clear>
+      if (pathname.startsWith("/api/webdav/")) {
+        const action = pathname.slice("/api/webdav/".length);
+        return await apiWebdav(req, res, action);
       }
       // 精确分段:/api/software/<id>[/releases|/refresh]
       const PREFIX = "/api/software/";

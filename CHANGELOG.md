@@ -1,5 +1,15 @@
 # CHANGELOG.md
 
+## v0.3.0 (2026-08-06)
+
+### WebDAV 云同步（参考积分仪表盘 wb-credits 设计）
+- **需要登录**：WebDAV 地址/用户名/密码配置（设置弹窗新增 WebDAV 区），密码仅存本机且 API 脱敏（只回 has，不回明文；留空保存 = 保留原密码）
+- **上传/下载数据**：本地清单（data.json）↔ 云端 `/gh-release-center/data.json` 双向同步；下载前自动备份本地（`.bak-<时间戳>`），覆盖前 UI 确认
+- **两个目录桥接**：本地 CAP_STORAGE_DIR + WebDAV 远端目录——换机/重装后登录 WebDAV「下载」即可恢复全部软件清单与缓存
+- **API**：`/api/webdav/config`（GET/POST）/ `test` / `upload` / `download` / `clear`
+- **lib/webdav.mjs**：零依赖 WebDAV 客户端（MKCOL/PUT/GET + Basic 认证，参考平台实现，工具独立）
+- 测试 26 例全绿（新增 config 保存/密码脱敏/清空用例）
+
 ## v0.2.0 (2026-08-06)
 
 ### 适配 tools-center v0.12.0 V2 新规范

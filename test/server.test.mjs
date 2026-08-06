@@ -187,4 +187,31 @@ test("编辑与删除", async () => {
   assert.equal(d.data.ok, true);
 });
 
+test("webdav: 配置保存/密码脱敏/清空", async () => {
+  // 保存配置(带密码)
+  let r = await req("POST", "/api/webdav/config", { url: "https://dav.example.com/dav/", user: "u1", pass: "secret" });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.ok, true);
+  // GET config:密码不返回明文,只回 has
+  r = await req("GET", "/api/webdav/config");
+  assert.equal(r.data.url, "https://dav.example.com/dav/");
+  assert.equal(r.data.user, "u1");
+  assert.equal(r.data.has, true);
+  assert.equal(r.data.pass, undefined, "config 不返回密码明文");
+  // GET /api/settings 同样脱敏
+  r = await req("GET", "/api/settings");
+  assert.equal(r.data.settings.webdavHas, true);
+  assert.equal(r.data.settings.webdavPass, undefined);
+  // 留空密码保存 → 保留原密码
+  await req("POST", "/api/webdav/config", { url: "https://dav.example.com/dav/", user: "u1", pass: "" });
+  r = await req("GET", "/api/webdav/config");
+  assert.equal(r.data.has, true, "留空密码应保留原密码");
+  // clear → 清空
+  r = await req("POST", "/api/webdav/clear");
+  assert.equal(r.data.ok, true);
+  r = await req("GET", "/api/webdav/config");
+  assert.equal(r.data.has, false);
+  assert.equal(r.data.url, "");
+});
+
 after(() => server.close());

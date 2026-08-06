@@ -211,6 +211,17 @@
     <div class="row"><label>GitHub Token（可选）</label><input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库"><div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div></div>
     <div class="row"><label>代理地址（可选）</label><input id="fProxy" placeholder="如 http://127.0.0.1:7890"><div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div></div>
     <div class="row"><label>「显示更早」每次增量</label><input id="fPerPage" type="number" min="1" max="50"></div>
+    <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><label style="font-weight:500;color:var(--fg)">WebDAV 云同步</label><div class="tips">登录后上传/下载软件清单数据——本地与云端两个目录桥接，换机/重装不丢</div></div>
+    <div class="row"><label>WebDAV 地址</label><input id="fWdUrl" placeholder="如 https://dav.jianguoyun.com/dav/"></div>
+    <div class="row"><label>用户名</label><input id="fWdUser" placeholder="WebDAV 账号"></div>
+    <div class="row"><label>密码</label><input id="fWdPass" type="password" placeholder="输入 WebDAV 密码"></div>
+    <div class="row"><div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn" id="btnWdSave">保存配置</button>
+      <button class="btn" id="btnWdTest">测试</button>
+      <button class="btn" id="btnWdUp">上传到云端</button>
+      <button class="btn" id="btnWdDown">从云端下载</button>
+      <button class="btn" style="color:var(--red)" id="btnWdClear">清空</button>
+    </div><div class="tips" id="wdStatus">填写 WebDAV 地址/账号/密码后点「保存配置」</div></div>
     <div class="row"><div class="err" id="setErr"></div></div>
     <div class="mfoot"><button class="btn" id="btnSetCancel">取消</button><button class="btn pri" id="btnSetSave">保存</button></div>
   </div>
@@ -445,6 +456,11 @@ async function openSettings() {
     $("fToken").value = d.settings.githubToken || "";
     $("fProxy").value = d.settings.proxy || "";
     $("fPerPage").value = d.settings.perPage || 3;
+    $("fWdUrl").value = d.settings.webdavUrl || "";
+    $("fWdUser").value = d.settings.webdavUser || "";
+    $("fWdPass").value = "";
+    $("fWdPass").placeholder = d.settings.webdavHas ? "已设置,留空保留" : "输入 WebDAV 密码";
+    $("wdStatus").textContent = d.settings.webdavHas ? "已配置,可直接上传/下载" : "尚未配置 WebDAV";
     $("setErr").style.display = "none";
     $("ovSet").classList.add("show");
   } catch (e) { toast(e.message, true); }
@@ -576,6 +592,41 @@ $("btnSetSave").addEventListener("click", async () => {
     }) });
     $("ovSet").classList.remove("show"); toast("设置已保存");
   } catch (e) { $("setErr").textContent = e.message; $("setErr").style.display = "block"; }
+});
+
+/* ---------- WebDAV 云同步 ---------- */
+async function wdAct(path, opts, busy) {
+  const st = $("wdStatus");
+  st.textContent = busy;
+  try {
+    const d = await api(path, { method: "POST", ...opts });
+    st.textContent = "✅ " + d.message;
+    toast(d.message);
+    return d;
+  } catch (e) {
+    st.textContent = "❌ " + e.message;
+    toast(e.message, true);
+  }
+}
+$("btnWdSave").addEventListener("click", async () => {
+  try {
+    const d = await api("/webdav/config", { method: "POST", body: JSON.stringify({ url: $("fWdUrl").value.trim(), user: $("fWdUser").value.trim(), pass: $("fWdPass").value }) });
+    $("fWdPass").value = ""; $("fWdPass").placeholder = "已设置,留空保留";
+    $("wdStatus").textContent = "✅ " + d.message; toast(d.message);
+  } catch (e) { $("wdStatus").textContent = "❌ " + e.message; toast(e.message, true); }
+});
+$("btnWdTest").addEventListener("click", () => wdAct("/webdav/test", {}, "测试中…"));
+$("btnWdUp").addEventListener("click", () => wdAct("/webdav/upload", {}, "上传中…"));
+$("btnWdDown").addEventListener("click", async () => {
+  if (!confirm("下载会覆盖本地清单数据(以云端为准),确定继续吗?")) return;
+  await wdAct("/webdav/download", {}, "下载中…");
+  await loadAll();
+});
+$("btnWdClear").addEventListener("click", async () => {
+  if (!confirm("确认清空 WebDAV 配置?")) return;
+  await wdAct("/webdav/clear", {}, "清空中…");
+  $("fWdUrl").value = ""; $("fWdUser").value = ""; $("fWdPass").value = "";
+  $("fWdPass").placeholder = "输入 WebDAV 密码";
 });
 
 /* 遮罩点击关闭 + Esc */
