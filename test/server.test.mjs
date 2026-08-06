@@ -123,6 +123,36 @@ test("releases 子路径 405 方法不允许", async () => {
   assert.equal(r.status, 405);
 });
 
+test("check-updates: 有新版时返回 id,无更新时不返回", async () => {
+  // 当前 fakeReleases 按 page 返回 v1.0.<page>a/b;缓存最新是 v1.0.1a(POST 时 page=1 拉的)
+  // 构造一个"最新已变"的场景:先 POST 添加(缓存 v1.0.1a),再让 fake 返回新 tag
+  const src = createServer({ fetchReleases: fakeReleases });
+  await new Promise((r) => src.listen(0, "127.0.0.1", r));
+  const b = `http://127.0.0.1:${src.address().port}`;
+  await fetch(b + "/api/software", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repoUrl: "o/updates" }) });
+  // 替换 fake:最新变为 v2.0.0
+  const changed = createServer({
+    fetchReleases: async ({ page }) => ({
+      ok: true, releases: [rel(`v2.0.0`)], hasMore: false,
+    }),
+  });
+  await new Promise((r) => changed.listen(0, "127.0.0.1", r));
+  const cb = `http://127.0.0.1:${changed.address().port}`;
+  // 先查 software 拿 id(从共享 store 读)
+  const list = await req("GET", "/api/software");
+  const id = list.data.software.find((x) => x.owner === "o").id;
+  const r = await (await fetch(cb + "/api/check-updates", { method: "POST" })).json();
+  assert.equal(r.ok, true);
+  assert.ok(r.hasNew.includes(id), "应有新版 id");
+  // 无更新场景:fake 返回与缓存一致
+  const same = createServer({ fetchReleases: fakeReleases });
+  await new Promise((r) => same.listen(0, "127.0.0.1", r));
+  const sb = `http://127.0.0.1:${same.address().port}`;
+  const r2 = await (await fetch(sb + "/api/check-updates", { method: "POST" })).json();
+  assert.ok(!r2.hasNew.includes(id), "无更新时不返回");
+  src.close(); changed.close(); same.close();
+});
+
 test("编辑与删除", async () => {
   const list = await req("GET", "/api/software");
   const id = list.data.software[0].id;

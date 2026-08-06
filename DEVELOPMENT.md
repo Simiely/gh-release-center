@@ -87,3 +87,15 @@ server.mjs (入口薄层:静态 + API 路由)
 - 2026-08-06：项目初始化，四件套 + manifest + 骨架
 - 2026-08-06（v0.1.1）：修复加载更多 page 计算 + 增量渲染 + 新增校验仓库存在；路由精确匹配重构；补路由层单测（22 例全绿）
 - 2026-08-06（v0.1.2）：POST 新增合并为一次请求；尾部斜杠等价；刷新/删除局部化（replaceCard）；23 例全绿
+- 2026-08-06（v0.1.3）：UI 重构——网格卡片 + 悬浮详情弹层（最新版主卡/LATEST 徽标/下载优先）+ 顶栏搜索/平台/分类筛选 + 批量添加；后端 check-updates API（NEW 角标数据源）；24 例全绿
+
+### UI 重构记录（v0.1.3，原型驱动）
+
+**设计定稿过程**：SVG 信息架构对比 → 三方案（列表/网格/表格）→ 融合「网格+展开」→ 改「悬浮弹层」（网格不被破坏）→ 视觉层级修正（下载为主角、GitHub 页面降弱）→「最新版主卡+历史折叠」（业界模式：下载页最新版首屏突出 + 历史版本收纳折叠）。
+
+**实现要点**：
+- 前端零依赖单文件保持，状态集中 `state` 对象（筛选/软件/map/hasNew/detailId）
+- 平台过滤（Segmented）仅前端过滤，不再写回后端 settings（保持 settings 只存连接类配置）
+- 资产下载用 `browser_download_url` 直链 `window.open`，公共仓库免登录；私有仓库降级走 GitHub 页
+- 复制链接 `navigator.clipboard` + `execCommand` fallback（非 localhost 的 http 环境 clipboard API 不可用）
+- check-updates 串行检查 perPage=1，避免大请求；对比缓存第一页 tag 判"有新版"（无缓存不算更新）

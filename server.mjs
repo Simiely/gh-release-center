@@ -170,6 +170,19 @@ export function createServer(deps = {}) {
       if (pathname === "/health") return json(res, 200, { ok: true });
       if (pathname === "/api/software" || pathname === "/api/software/") return await apiSoftware(req, res, github);
       if (pathname === "/api/settings") return await apiSettings(req, res);
+      // POST /api/check-updates — 串行检查全部软件最新 tag,对比缓存,返回有新版的 id 列表
+      if (pathname === "/api/check-updates" && req.method === "POST") {
+        const settings = store.getSettings();
+        const hasNew = [];
+        for (const s of store.load().software) {
+          const r = await github.fetchReleases({ owner: s.owner, repo: s.repo, page: 1, perPage: 1, token: settings.githubToken, proxy: settings.proxy });
+          if (r.ok && r.releases.length) {
+            const cached = s.cache?.releases?.[0]?.tag;
+            if (cached && cached !== r.releases[0].tag) hasNew.push(s.id);
+          }
+        }
+        return json(res, 200, { ok: true, hasNew });
+      }
       // 精确分段:/api/software/<id>[/releases|/refresh]
       const PREFIX = "/api/software/";
       if (pathname.startsWith(PREFIX)) {

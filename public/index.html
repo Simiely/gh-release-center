@@ -8,218 +8,170 @@
   :root{
     --bg:#141419; --panel:#1d1d26; --panel2:#24242f; --line:#2e2e3d;
     --fg:#e8e8f0; --dim:#9a9ab0; --faint:#6c6c85;
-    --pink:#ff6b9d; --pink2:#ff8fb8; --accent:#a78bfa;
-    --green:#4ade80; --red:#f87171; --amber:#fbbf24;
+    --pink:#ff6b9d; --pink2:#ff8fb8; --purple:#a78bfa; --purple-d:#534AB7;
+    --green:#4ade80; --coral:#ff8a5c; --amber:#fbbf24; --red:#f87171;
     --radius:12px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:var(--bg);color:var(--fg);
-    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
-    min-height:100vh;
-  }
+  body{background:var(--bg);color:var(--fg);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;min-height:100vh}
   a{color:var(--pink2);text-decoration:none}
   a:hover{text-decoration:underline}
 
-  /* 顶栏 */
-  header{
-    position:sticky;top:0;z-index:10;
-    background:rgba(20,20,25,.92);backdrop-filter:blur(8px);
-    border-bottom:1px solid var(--line);
-    padding:14px 24px;display:flex;align-items:center;gap:14px;
-  }
-  header h1{font-size:19px;font-weight:700;letter-spacing:.3px}
-  header h1 .dot{color:var(--pink)}
-  header .spacer{flex:1}
-  .btn{
-    border:1px solid var(--line);background:var(--panel2);color:var(--fg);
-    padding:7px 14px;border-radius:9px;cursor:pointer;font-size:13px;
-    display:inline-flex;align-items:center;gap:6px;transition:.15s;
-  }
+  /* ---------- 顶栏 ---------- */
+  header{position:sticky;top:0;z-index:20;background:rgba(20,20,25,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 20px}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .logo{font-size:17px;font-weight:500;letter-spacing:.3px;white-space:nowrap}
+  .logo b{color:var(--pink)}
+  .inp{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--fg);font-size:13px;outline:none;min-width:160px;flex:1}
+  .inp:focus{border-color:var(--pink)}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{border:0;background:transparent;color:var(--dim);padding:8px 13px;font-size:12.5px;cursor:pointer}
+  .seg button.on{background:var(--purple-d);color:#fff}
+  .seg .lbl{display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--faint)}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:8px 13px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
   .btn:hover{border-color:var(--pink);color:var(--pink2)}
-  .btn.primary{background:linear-gradient(135deg,#ff6b9d,#a78bfa);border:none;color:#fff;font-weight:600}
-  .btn.primary:hover{filter:brightness(1.12);color:#fff}
-  .btn.small{padding:3px 9px;font-size:12px;border-radius:7px}
-  .btn.danger:hover{border-color:var(--red);color:var(--red)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.pri{background:linear-gradient(135deg,var(--pink),var(--purple));border:0;color:#fff;font-weight:500}
+  .tabs{display:flex;gap:6px;margin:10px 0 2px;flex-wrap:wrap;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:20px;padding:4px 13px;font-size:12px;cursor:pointer;white-space:nowrap}
+  .tabs button.on{background:#26212b;border-color:var(--purple);color:var(--purple)}
+  .stats{color:var(--faint);font-size:12px;margin:8px 0 12px;display:flex;gap:14px;flex-wrap:wrap}
+  .stats b{color:var(--dim);font-weight:500}
+  .stats .upd{color:var(--green);font-weight:500}
 
-  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  /* ---------- 主体 ---------- */
+  main{max-width:1180px;margin:0 auto;padding:6px 20px 80px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;position:relative;transition:border-color .15s}
+  .card:hover{border-color:var(--purple)}
+  .tile{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:13px;margin-bottom:10px}
+  .nm{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rp{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .st{margin-top:11px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim)}
+  .ver{font-family:Consolas,monospace;color:var(--green);background:rgba(74,222,128,.09);border:1px solid rgba(74,222,128,.25);padding:1px 7px;border-radius:6px;font-size:11.5px}
+  .ver.none{color:var(--faint);background:transparent;border-color:var(--line)}
+  .new{position:absolute;top:10px;right:10px;background:var(--coral);color:#fff;font-size:10px;font-weight:500;padding:2px 7px;border-radius:8px}
+  .card .hint{position:absolute;bottom:10px;right:12px;font-size:10px;color:var(--faint);opacity:0;transition:opacity .15s}
+  .card:hover .hint{opacity:1}
+  .empty{text-align:center;color:var(--faint);padding:56px 20px;border:1px dashed var(--line);border-radius:13px;font-size:13px}
+  .empty .big{font-size:38px;margin-bottom:10px}
 
-  /* 空态 */
-  .empty{
-    text-align:center;color:var(--dim);padding:70px 20px;border:1px dashed var(--line);
-    border-radius:var(--radius);margin-top:20px;
-  }
-  .empty .big{font-size:44px;margin-bottom:12px}
+  /* ---------- 弹层 ---------- */
+  .ov{position:fixed;inset:0;background:rgba(8,8,12,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+  .ov.show{display:flex}
+  .modal{background:var(--panel);border:1px solid #3a3a48;border-radius:14px;width:min(640px,100%);max-height:84vh;overflow:auto;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .mhead{display:flex;gap:12px;align-items:flex-start}
+  .mtile{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px;flex-shrink:0}
+  .mnm{font-size:16px;font-weight:500}
+  .mrp{font-size:12px;color:var(--faint);margin-top:3px}
+  .mcat{display:inline-block;font-size:11px;color:var(--pink2);background:rgba(255,107,157,.12);border:1px solid rgba(255,107,157,.3);padding:1px 8px;border-radius:20px;margin-top:6px}
+  .mclose{margin-left:auto;background:var(--panel2);border:1px solid var(--line);color:var(--dim);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:14px;flex-shrink:0}
+  .mclose:hover{border-color:var(--pink);color:var(--pink2)}
+  .mstat{display:flex;gap:8px;align-items:center;margin:14px 0 0;font-size:12px;color:var(--dim);flex-wrap:wrap}
+  .latest{background:rgba(255,107,157,.07);border:1px solid rgba(255,107,157,.4);border-radius:12px;padding:14px;margin-top:10px}
+  .lhead{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap}
+  .lver{font-family:Consolas,monospace;font-size:16px;font-weight:500;color:var(--pink2)}
+  .lbadge{background:var(--green);color:#0a1f12;font-size:10px;font-weight:500;padding:2px 9px;border-radius:10px;letter-spacing:.3px}
+  .assets{display:flex;gap:8px;flex-wrap:wrap}
+  .as{display:inline-flex;align-items:center;gap:7px;font-size:12px;border:1px solid rgba(255,107,157,.55);background:rgba(255,107,157,.12);color:var(--pink2);border-radius:9px;padding:6px 13px;cursor:pointer;transition:.13s;font-weight:500}
+  .as:hover{border-color:var(--pink);background:rgba(255,107,157,.25)}
+  .as .dl{color:var(--pink);font-size:13px;font-weight:500;line-height:1}
+  .latest .as{padding:9px 18px;font-size:13px}
+  .latest .as .dl{font-size:15px}
+  .pl{width:16px;height:16px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:#fff;flex-shrink:0}
+  .plw{background:#3f6f9e}.plm{background:#5a5a6e}.pll{background:#4a7a55}.plo{background:#555}
+  .hsec{font-size:11px;color:var(--faint);margin:16px 0 2px;display:flex;align-items:center;gap:10px}
+  .hsec:after{content:"";flex:1;height:1px;background:var(--line)}
+  .hrel{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid rgba(46,46,61,.5);flex-wrap:wrap}
+  .hrel:last-of-type{border-bottom:0}
+  .chip{font-family:Consolas,monospace;font-size:11.5px;color:var(--dim);background:rgba(46,46,61,.6);border:1px solid var(--line);padding:2px 8px;border-radius:6px}
+  .hrel .as{padding:4px 10px;font-size:11px;border-color:var(--line);background:var(--panel2);color:var(--dim)}
+  .hrel .as .dl{color:var(--faint);font-size:11px}
+  .hrel .as:hover{color:var(--pink2);border-color:var(--pink)}
+  .dat{font-size:11px;color:var(--faint);min-width:44px}
+  .none{font-size:11px;color:var(--faint)}
+  .more{width:100%;border:1px dashed var(--line);background:transparent;color:var(--dim);border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:6px}
+  .more:hover{border-color:var(--pink);color:var(--pink2)}
+  .mops{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+  .ghlink{color:var(--faint);font-size:12px;margin-left:auto}
+  .ghlink:hover{color:var(--pink2)}
 
-  /* 软件卡片 */
-  .card{
-    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    margin-bottom:16px;overflow:hidden;
-  }
-  .card-head{
-    padding:14px 18px;display:flex;align-items:flex-start;gap:10px;
-  }
-  .card-head .cat{
-    font-size:11px;color:var(--pink2);background:rgba(255,107,157,.12);
-    border:1px solid rgba(255,107,157,.3);padding:2px 8px;border-radius:20px;white-space:nowrap;
-  }
-  .card-head h2{font-size:16px;font-weight:600}
-  .card-head .repo{font-size:12px;color:var(--dim);margin-top:3px}
-  .card-head .note{font-size:12.5px;color:var(--dim);margin-top:6px}
-  .card-head .ops{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
-  .stat{
-    margin-left:14px;font-size:11.5px;color:var(--faint);white-space:nowrap;padding-top:4px;text-align:right;
-  }
+  /* ---------- 表单弹层 ---------- */
+  .modal h3{font-size:15px;margin-bottom:14px}
+  .row{margin-bottom:12px}
+  .row label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:5px}
+  .row input,.row select,.row textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 11px;font-size:13.5px;outline:none}
+  .row input:focus,.row textarea:focus{border-color:var(--pink)}
+  .row textarea{resize:vertical;min-height:70px;font-family:Consolas,monospace;font-size:12.5px}
+  .row .tips{font-size:11.5px;color:var(--faint);margin-top:4px}
+  .row .err{color:var(--red);font-size:12.5px;margin-top:8px;display:none}
+  .mfoot{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}
 
-  /* Release 列表 */
-  .rel-list{border-top:1px solid var(--line)}
-  .rel{
-    padding:10px 18px;display:flex;gap:12px;align-items:flex-start;
-    border-bottom:1px solid var(--line);background:rgba(255,255,255,.012);
-  }
-  .rel:last-child{border-bottom:none}
-  .rel .ver{
-    font-family:Consolas,monospace;font-size:13px;color:var(--accent);
-    background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);
-    padding:2px 8px;border-radius:6px;white-space:nowrap;margin-top:1px;
-  }
-  .rel .meta{flex:1;min-width:0}
-  .rel .meta .time{font-size:11.5px;color:var(--faint)}
-  .rel .meta .pre{font-size:10px;color:var(--amber);border:1px solid rgba(251,191,36,.4);border-radius:4px;padding:0 4px;margin-left:6px}
-  .assets{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-  .asset{
-    display:inline-flex;align-items:center;gap:5px;font-size:12px;
-    border:1px solid var(--line);background:var(--panel2);color:var(--fg);
-    padding:4px 10px;border-radius:7px;cursor:pointer;transition:.15s;
-  }
-  .asset:hover{border-color:var(--green);color:var(--green)}
-  .asset .sz{color:var(--faint);font-size:11px}
-  .asset .dl{color:var(--faint);font-size:11px}
-
-  .rel-foot{padding:10px 18px;display:flex;gap:8px;align-items:center}
-  .rel-foot .more{
-    border:1px dashed var(--line);background:transparent;color:var(--dim);
-    padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12.5px;flex:1;
-  }
-  .rel-foot .more:hover{border-color:var(--pink);color:var(--pink2)}
-  .rel-foot .hint{font-size:11.5px;color:var(--faint)}
-
-  /* 加载条 */
-  #loading{text-align:center;color:var(--faint);padding:30px;display:none}
-  .spinner{
-    width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--pink);
-    border-radius:50%;margin:0 auto 10px;animation:spin .8s linear infinite;
-  }
-  @keyframes spin{to{transform:rotate(360deg)}}
-
-  /* 弹层 */
-  .overlay{
-    position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;
-    display:none;align-items:flex-start;justify-content:center;padding:60px 20px;
-    backdrop-filter:blur(2px);
-  }
-  .overlay.show{display:flex}
-  .modal{
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    width:100%;max-width:520px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5);
-  }
-  .modal h3{font-size:16px;margin-bottom:16px}
-  .modal .row{margin-bottom:13px}
-  .modal label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:5px}
-  .modal input,.modal select,.modal textarea{
-    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
-    border-radius:8px;padding:8px 11px;font-size:13.5px;outline:none;
-  }
-  .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--pink)}
-  .modal textarea{resize:vertical;min-height:56px}
-  .modal .tips{font-size:11.5px;color:var(--faint);margin-top:4px;line-height:1.5}
-  .modal .foot{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
-  .modal .err{color:var(--red);font-size:12.5px;margin-top:10px;display:none}
-
-  .toast{
-    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-    background:var(--panel2);border:1px solid var(--line);color:var(--fg);
-    padding:10px 18px;border-radius:10px;font-size:13px;z-index:99;
-    box-shadow:0 8px 30px rgba(0,0,0,.4);display:none;max-width:80vw;
-  }
+  /* ---------- 其他 ---------- */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:9px 16px;border-radius:10px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;white-space:nowrap}
+  .toast.show{opacity:1}
   .toast.err{border-color:var(--red);color:var(--red)}
 </style>
 </head>
 <body>
 
 <header>
-  <h1><span class="dot">📥</span> 软件下载中心</h1>
-  <div class="spacer"></div>
-  <button class="btn" id="btnSettings">⚙️ 设置</button>
-  <button class="btn primary" id="btnAdd">+ 添加软件</button>
+  <div class="bar">
+    <div class="logo">软件<b>下载</b>中心</div>
+    <input class="inp" id="q" placeholder="搜索软件 / 仓库 / 备注…">
+    <div class="seg" id="plat"><span class="lbl">平台</span><button data-p="all" class="on">全部</button><button data-p="win">Win</button><button data-p="mac">Mac</button><button data-p="linux">Lin</button></div>
+    <button class="btn" id="bAdd">+ 添加</button>
+    <button class="btn" id="bBatch">批量添加</button>
+    <button class="btn" id="bRefreshAll">全部刷新</button>
+    <button class="btn" id="bSet">设置</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="stats" id="stats"></div>
 </header>
 
 <main>
-  <div id="loading"><div class="spinner"></div>加载中…</div>
-  <div id="list"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden><div class="big">📭</div><div id="emptyText">清单为空，点击右上角「+ 添加」开始收录</div></div>
 </main>
 
+<!-- 详情弹层 -->
+<div class="ov" id="ovDetail">
+  <div class="modal" id="detailModal"></div>
+</div>
+
 <!-- 添加/编辑弹层 -->
-<div class="overlay" id="ovEdit">
-  <div class="modal">
+<div class="ov" id="ovEdit">
+  <div class="modal" style="max-width:520px">
     <h3 id="editTitle">添加软件</h3>
-    <div class="row">
-      <label>名称（留空自动用仓库名）</label>
-      <input id="fName" placeholder="如：Tools Center">
-    </div>
-    <div class="row">
-      <label>GitHub 仓库链接 <span style="color:var(--red)">*</span></label>
-      <input id="fRepo" placeholder="https://github.com/owner/repo 或 owner/repo">
-      <div class="tips">添加后自动拉取最新 Release</div>
-    </div>
-    <div class="row">
-      <label>分类</label>
-      <input id="fCat" placeholder="如：平台工具 / 插件 / 脚本">
-    </div>
-    <div class="row">
-      <label>备注</label>
-      <textarea id="fNote" placeholder="可选"></textarea>
-    </div>
-    <div class="err" id="editErr"></div>
-    <div class="foot">
-      <button class="btn" id="btnEditCancel">取消</button>
-      <button class="btn primary" id="btnEditSave">保存</button>
-    </div>
+    <div class="row"><label>名称（留空自动用仓库名）</label><input id="fName" placeholder="如：Tools Center"></div>
+    <div class="row"><label>GitHub 仓库链接 <span style="color:var(--red)">*</span></label><input id="fRepo" placeholder="https://github.com/owner/repo 或 owner/repo"><div class="tips">添加后自动拉取最新 Release</div></div>
+    <div class="row"><label>分类</label><input id="fCat" placeholder="如：工具 / 插件 / 脚本"></div>
+    <div class="row"><label>备注</label><textarea id="fNote" style="min-height:48px"></textarea></div>
+    <div class="row"><div class="err" id="editErr"></div></div>
+    <div class="mfoot"><button class="btn" id="btnEditCancel">取消</button><button class="btn pri" id="btnEditSave">保存</button></div>
+  </div>
+</div>
+
+<!-- 批量添加弹层 -->
+<div class="ov" id="ovBatch">
+  <div class="modal" style="max-width:560px">
+    <h3>批量添加软件</h3>
+    <div class="row"><label>每行一个仓库（支持 owner/repo 或完整链接）</label><textarea id="fBatch" placeholder="Simiely/tools-center&#10;https://github.com/Simiely/knowledge-base&#10;microsoft/PowerToys"></textarea><div class="tips" id="batchStat">将逐条校验并添加，重复仓库自动跳过</div></div>
+    <div class="row"><div class="err" id="batchErr"></div></div>
+    <div class="mfoot"><button class="btn" id="btnBatchCancel">取消</button><button class="btn pri" id="btnBatchGo">开始添加</button></div>
   </div>
 </div>
 
 <!-- 设置弹层 -->
-<div class="overlay" id="ovSet">
-  <div class="modal">
-    <h3>⚙️ 设置</h3>
-    <div class="row">
-      <label>GitHub Token（可选）</label>
-      <input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库">
-      <div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div>
-    </div>
-    <div class="row">
-      <label>代理地址（可选）</label>
-      <input id="fProxy" placeholder="如 http://127.0.0.1:7890">
-      <div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div>
-    </div>
-    <div class="row">
-      <label>「加载更多」每次增量</label>
-      <input id="fPerPage" type="number" min="1" max="50" value="3">
-    </div>
-    <div class="row">
-      <label>默认平台过滤</label>
-      <select id="fFilter">
-        <option value="all">全部</option>
-        <option value="win">🪟 Windows</option>
-        <option value="mac">🍎 macOS</option>
-        <option value="linux">🐧 Linux</option>
-      </select>
-    </div>
-    <div class="err" id="setErr"></div>
-    <div class="foot">
-      <button class="btn" id="btnSetCancel">取消</button>
-      <button class="btn primary" id="btnSetSave">保存</button>
-    </div>
+<div class="ov" id="ovSet">
+  <div class="modal" style="max-width:520px">
+    <h3>设置</h3>
+    <div class="row"><label>GitHub Token（可选）</label><input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库"><div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div></div>
+    <div class="row"><label>代理地址（可选）</label><input id="fProxy" placeholder="如 http://127.0.0.1:7890"><div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div></div>
+    <div class="row"><label>「显示更早」每次增量</label><input id="fPerPage" type="number" min="1" max="50"></div>
+    <div class="row"><div class="err" id="setErr"></div></div>
+    <div class="mfoot"><button class="btn" id="btnSetCancel">取消</button><button class="btn pri" id="btnSetSave">保存</button></div>
   </div>
 </div>
 
@@ -227,24 +179,29 @@
 
 <script>
 "use strict";
+/* ================= 状态与工具 ================= */
 const BASE = window.__BASE__ || "";
 const $ = (id) => document.getElementById(id);
+const PLAT_ICON = { win: "W", mac: "M", linux: "L" };
+const PLAT_CLS = { win: "plw", mac: "plm", linux: "pll" };
+const PLAT_NAME = { win: "Windows", mac: "macOS", linux: "Linux" };
 
-const PLATFORM_ICON = { win: "🪟", mac: "🍎", linux: "🐧" };
+let state = {
+  q: "", cat: "all", plat: "all",   // 筛选
+  software: [],                      // 全量软件(含缓存 releases)
+  map: {},                           // id -> software 快照
+  hasNew: {},                        // id -> true(有新版)
+  checking: false,
+  detailId: null,                    // 当前打开的详情 id
+  editingId: null,                   // 编辑中的 id(null=新增)
+};
 
-let settings = { perPage: 3, assetFilter: "all" };
-let editingId = null; // 编辑中的软件 id(null = 新增)
-let softwareMap = {}; // id -> software(内存快照,供增量渲染/编辑回填,免重复请求)
-
-/* ---------- 工具 ---------- */
 async function api(path, opts = {}) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
+  const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
     const res = await fetch(BASE + "/api" + path, {
-      headers: { "Content-Type": "application/json" },
-      ...opts,
-      signal: ctrl.signal,
+      headers: { "Content-Type": "application/json" }, ...opts, signal: ctrl.signal,
     });
     const data = await res.json().catch(() => ({ ok: false, message: "响应解析失败" }));
     if (!data.ok) throw new Error(data.message || `请求失败(${res.status})`);
@@ -252,9 +209,7 @@ async function api(path, opts = {}) {
   } catch (e) {
     if (e.name === "AbortError") throw new Error("请求超时，请重试");
     throw e;
-  } finally {
-    clearTimeout(timer);
-  }
+  } finally { clearTimeout(timer); }
 }
 
 let toastTimer = null;
@@ -262,264 +217,301 @@ function toast(msg, isErr) {
   const t = $("toast");
   t.textContent = msg;
   t.className = "toast" + (isErr ? " err" : "");
-  t.style.display = "block";
+  t.style.opacity = "1";
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.style.display = "none"), 3200);
+  toastTimer = setTimeout(() => (t.style.opacity = "0"), 2600);
 }
 
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function fmtTime(iso) { if (!iso) return ""; const d = new Date(iso); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function catColor(cat) {
+  const map = { "工具": "#85B7EB", "插件": "#AFA9EC", "脚本": "#ED93B1", "AE 脚本": "#ED93B1", "浏览器扩展": "#9FE1CB", "3D": "#FAC775", "Windows": "#F0997B", "指南": "#97C459", "文档": "#B4B2A9" };
+  return map[cat] || "#888780";
+}
+function tileText(name) { return (name || "?").slice(0, 2).toUpperCase(); }
+function platOf(s) { return (s.releases || []).flatMap((r) => (r.assets || []).map((a) => a.platform)); }
+function latestOf(s) { return (s.releases || [])[0] || null; }
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove(); return ok;
+    } catch { return false; }
+  }
 }
 
-function fmtTime(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-/* ---------- 渲染 ---------- */
-function matchFilter(asset) {
-  const f = settings.assetFilter;
-  if (f === "all") return true;
-  if (asset.platform === "other") return false;
-  return asset.platform === f;
-}
-
-/* 单个 release 行(无资产/被过滤也渲染版本行,保证 DOM 行数 = 缓存数,page 计算不失真) */
-function renderReleaseRow(r) {
-  const assets = (r.assets || []).filter(matchFilter);
-  const assetBtns = assets.map((a) => `
-    <a class="asset" href="${esc(a.url)}" target="_blank" rel="noopener" title="下载 ${esc(a.name)}">
-      <span>${PLATFORM_ICON[a.platform] || "📦"}</span> ${esc(a.name)}
-      ${a.sizeText ? `<span class="sz">${esc(a.sizeText)}</span>` : ""}
-      ${a.downloads ? `<span class="dl">↓${a.downloads}</span>` : ""}
-    </a>`).join("");
-  const assetHint = !(r.assets || []).length
-    ? '<span style="color:var(--faint);font-size:12px">（无下载资产）</span>'
-    : (!assets.length ? '<span style="color:var(--faint);font-size:12px">（无匹配平台的资产）</span>' : "");
-  return `
-  <div class="rel">
-    <div class="ver">${esc(r.tag)}${r.prerelease ? '<span class="pre">预览版</span>' : ""}</div>
-    <div class="meta">
-      <div class="time">${fmtTime(r.publishedAt)}</div>
-      <div class="assets">${assetBtns || assetHint}</div>
-    </div>
-  </div>`;
-}
-
-function renderCard(s) {
-  const releases = (s.releases || []).slice(); // 最新在前
-  const relHtml = releases.map(renderReleaseRow).join("");
-  const moreBtn = s.hasMore ? `
-    <div class="rel-foot">
-      <button class="more" data-more="${esc(s.id)}">加载更多 ↓</button>
-      <span class="hint">${s.total ? "共 " + s.total + " 个版本" : "还有更多版本"}</span>
-    </div>` : (s.total ? `
-    <div class="rel-foot"><span class="hint">共 ${s.total} 个版本</span></div>` : "");
-
-  return `
-  <div class="card" data-id="${esc(s.id)}" data-count="${s.releases?.length || 0}">
-    <div class="card-head">
-      <div>
-        <h2>${esc(s.name)} <span class="cat">${esc(s.category || "未分类")}</span></h2>
-        <div class="repo"><a href="https://github.com/${esc(s.owner)}/${esc(s.repo)}" target="_blank" rel="noopener">${esc(s.owner)}/${esc(s.repo)}</a></div>
-        ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
-      </div>
-      <div class="stat">${s.releases?.length || 0} 个版本已加载</div>
-      <div class="ops">
-        <button class="btn small" data-refresh="${esc(s.id)}" title="重新拉取最新">↻</button>
-        <button class="btn small" data-edit="${esc(s.id)}" title="编辑">✎</button>
-        <button class="btn small danger" data-del="${esc(s.id)}" title="删除">✕</button>
-      </div>
-    </div>
-    <div class="rel-list">${relHtml || '<div style="padding:14px 18px;color:var(--faint);font-size:12.5px">暂无已加载的 Release — 点击上方 ↻ 拉取</div>'}</div>
-    ${moreBtn}
-  </div>`;
-}
-
-/* 局部重建某张卡片(滚动位置保留),加载更多/刷新共用 */
-function replaceCard(card, s) {
-  const sy = window.scrollY;
-  const fresh = document.createElement("div");
-  fresh.innerHTML = renderCard(s).trim();
-  card.replaceWith(fresh.firstElementChild);
-  window.scrollTo(0, sy);
-}
-
-const EMPTY_HTML = `
-  <div class="empty">
-    <div class="big">📭</div>
-    <div>清单为空，点击右上角「+ 添加软件」开始收录</div>
-  </div>`;
-
+/* ================= 数据加载 ================= */
 async function loadAll() {
-  $("loading").style.display = "block";
-  $("list").innerHTML = "";
   try {
     const d = await api("/software");
-    const listEl = $("list");
-    if (!d.software.length) {
-      listEl.innerHTML = EMPTY_HTML;
-    } else {
-      softwareMap = {};
-      d.software.forEach((s) => (softwareMap[s.id] = s));
-      listEl.innerHTML = d.software.map(renderCard).join("");
-    }
-  } catch (e) {
-    $("list").innerHTML = `<div class="empty"><div class="big">⚠️</div><div>${esc(e.message)}</div></div>`;
-  } finally {
-    $("loading").style.display = "none";
-  }
+    state.software = d.software;
+    state.map = {};
+    d.software.forEach((s) => (state.map[s.id] = s));
+    render();
+  } catch (e) { toast(e.message, true); }
 }
 
-/* ---------- 事件 ---------- */
-$("list").addEventListener("click", async (ev) => {
-  const t = ev.target;
-  const id = t.dataset.refresh || t.dataset.edit || t.dataset.del || t.dataset.more;
-  if (!id) return;
+async function checkUpdates() {
+  if (state.checking) return;
+  state.checking = true;
+  const btn = $("bRefreshAll");
+  btn.disabled = true; btn.textContent = "检查中…";
   try {
-    if (t.dataset.refresh !== undefined) {
-      const card = t.closest(".card");
-      t.disabled = true;
-      t.textContent = "…";
-      try {
-        const d = await api(`/software/${id}/refresh`, { method: "POST" });
-        const s = { ...softwareMap[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
-        softwareMap[id] = s;
-        replaceCard(card, s);
-        toast("已重新拉取");
-      } catch (e) {
-        toast(e.message, true);
-        t.disabled = false;
-        t.textContent = "↻";
-      }
-    } else if (t.dataset.edit !== undefined) {
-      openEdit(id);
-    } else if (t.dataset.del !== undefined) {
-      if (!confirm("确定删除该软件？")) return;
-      await api(`/software/${id}`, { method: "DELETE" });
-      delete softwareMap[id];
-      t.closest(".card").remove();
-      if (!$("list").querySelector(".card")) $("list").innerHTML = EMPTY_HTML;
-      toast("已删除");
-    } else if (t.dataset.more !== undefined) {
-      const card = t.closest(".card");
-      const count = parseInt(card.dataset.count || "0", 10); // 缓存 release 总数(不受过滤影响)
-      const page = Math.floor(count / settings.perPage) + 1;
-      t.disabled = true;
-      t.textContent = "加载中…";
-      try {
-        const d = await api(`/software/${id}/releases?page=${page}`);
-        if (!d.releases.length) {
-          toast(d.hasMore === false ? "没有更多版本了" : "没有拉取到新数据，请重试", true);
-          t.disabled = false;
-          t.textContent = "加载更多 ↓";
-        } else {
-          // 增量渲染:只重建当前卡片(滚动位置保留),其余卡片不动
-          const s = { ...softwareMap[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
-          softwareMap[id] = s;
-          replaceCard(card, s);
-          toast(`已加载 ${d.releases.length} 个版本`);
-        }
-      } catch (e) {
-        toast(e.message, true);
-        t.disabled = false;
-        t.textContent = "加载更多 ↓";
-      }
-    }
-  } catch (e) {
-    toast(e.message, true);
-  }
-});
+    const d = await api("/check-updates", { method: "POST" });
+    state.hasNew = {};
+    (d.hasNew || []).forEach((id) => (state.hasNew[id] = true));
+    render();
+    toast(d.hasNew?.length ? `发现 ${d.hasNew.length} 个软件有新版` : "全部是最新版本");
+  } catch (e) { toast(e.message, true); }
+  finally { state.checking = false; btn.disabled = false; btn.textContent = "全部刷新"; }
+}
 
-/* 添加 / 编辑 */
-$("btnAdd").addEventListener("click", () => openEdit(null));
-$("btnEditCancel").addEventListener("click", () => closeEdit());
-$("btnEditSave").addEventListener("click", async () => {
-  const repo = $("fRepo").value.trim();
-  if (!editingId && !repo) return toast("请填写仓库链接", true);
-  const body = {
-    name: $("fName").value.trim(),
-    repoUrl: repo,
-    category: $("fCat").value.trim(),
-    note: $("fNote").value.trim(),
-  };
-  try {
-    if (editingId) {
-      await api(`/software/${editingId}`, { method: "PUT", body: JSON.stringify({ name: body.name, category: body.category, note: body.note }) });
-      toast("已保存");
-    } else {
-      await api("/software", { method: "POST", body: JSON.stringify(body) });
-      toast("已添加并拉取最新 Release");
-    }
-    closeEdit();
-    await loadAll();
-  } catch (e) {
-    $("editErr").textContent = e.message;
-    $("editErr").style.display = "block";
-  }
-});
+/* ================= 渲染 ================= */
+function cats() { return [...new Set(state.software.map((s) => s.category || "未分类"))].sort(); }
+function renderTabs() {
+  $("tabs").innerHTML = `<button data-c="all" class="${state.cat === "all" ? "on" : ""}">全部</button>` +
+    cats().map((c) => `<button data-c="${esc(c)}" class="${state.cat === c ? "on" : ""}">${esc(c)}</button>`).join("");
+}
+function renderStats(shown) {
+  const newCount = Object.keys(state.hasNew).length;
+  $("stats").innerHTML = `<span><b>${state.software.length}</b> 个软件</span>` +
+    `<span>${newCount ? `发现 <b class="upd">${newCount}</b> 个有新版本` : "已是最新版本"}</span>` +
+    `<span>${state.q || state.cat !== "all" || state.plat !== "all" ? `筛出 ${shown.length} 个` : ""}</span>`;
+}
+function card(s) {
+  const col = catColor(s.category);
+  const latest = latestOf(s);
+  const verHtml = latest ? `<span class="ver">${esc(latest.tag)}</span>` : `<span class="ver none">暂无 Release</span>`;
+  const newHtml = state.hasNew[s.id] ? '<span class="new">NEW</span>' : "";
+  const time = latest ? latest.publishedAt : s.createdAt;
+  return `<div class="card" data-id="${esc(s.id)}">
+    <span class="hint">查看详情</span>
+    <div style="display:flex;gap:10px">
+      <div class="tile" style="background:${col}22;color:${col};border:1px solid ${col}44">${esc(tileText(s.name))}</div>
+      <div style="flex:1;min-width:0"><div class="nm">${esc(s.name)}</div><div class="rp">${esc(s.owner)}/${esc(s.repo)}</div></div>
+      ${newHtml}
+    </div>
+    <div class="st">${verHtml}<span>${fmtTime(time)}</span></div>
+  </div>`;
+}
+function render() {
+  const q = state.q.trim().toLowerCase();
+  const shown = state.software.filter((s) => {
+    if (q && ![s.name, s.owner + "/" + s.repo, s.category, s.note].join(" ").toLowerCase().includes(q)) return false;
+    if (state.cat !== "all" && (s.category || "未分类") !== state.cat) return false;
+    if (state.plat !== "all" && !platOf(s).includes(state.plat)) return false;
+    return true;
+  });
+  $("grid").innerHTML = shown.map(card).join("");
+  $("empty").hidden = shown.length > 0;
+  $("emptyText").textContent = state.software.length ? "没有匹配的软件 — 试试清空筛选条件" : "清单为空，点击右上角「+ 添加」开始收录";
+  renderTabs();
+  renderStats(shown);
+}
 
-async function openEdit(id) {
-  editingId = id;
+/* ================= 详情弹层 ================= */
+function assetBtn(a, cls) {
+  const p = a.platform || "other";
+  return `<span class="as" data-dl data-name="${esc(a.name)}" data-url="${esc(a.url)}" title="直接下载 ${esc(a.name)}">
+    <span class="dl">↓</span><span class="pl ${PLAT_CLS[p] || "plo"}">${PLAT_ICON[p] || "•"}</span>${esc(a.name)}
+    <span style="color:var(--faint);font-weight:400">${a.sizeText || ""}</span></span>`;
+}
+function openDetail(id) {
+  const s = state.map[id];
+  if (!s) return;
+  state.detailId = id;
+  const rels = s.releases || [];
+  const latest = rels[0];
+  const hist = rels.slice(1);
+  const col = catColor(s.category);
+  const newHtml = state.hasNew[id] ? ' <span class="new" style="position:static;display:inline-block;margin-left:6px">NEW</span>' : "";
+  let latestHtml = "";
+  if (latest) {
+    const as = (latest.assets || []).map((a) => assetBtn(a, true)).join("") || '<span class="none">无下载资产</span>';
+    latestHtml = `<div class="latest"><div class="lhead"><span class="lver">${esc(latest.tag)}</span><span class="lbadge">LATEST</span><span class="ldate">${fmtTime(latest.publishedAt)} 发布</span></div><div class="assets">${as}</div></div>`;
+  }
+  const histHtml = hist.length ? hist.map((r) => {
+    const as = (r.assets || []).map((a) => assetBtn(a, false)).join("") || '<span class="none">无下载资产</span>';
+    return `<div class="hrel"><span class="chip">${esc(r.tag)}</span><span class="dat">${fmtTime(r.publishedAt)}</span><span class="assets">${as}</span></div>`;
+  }).join("") : "";
+  const more = s.hasMore ? `<button class="more" data-more>显示更早的 ${Math.min(s.total != null ? Math.max(0, s.total - rels.length) : 3, 3)} 个版本 · 已加载 ${rels.length}${s.total != null ? "/" + s.total : ""}</button>` : "";
+  $("detailModal").innerHTML = `
+    <div class="mhead">
+      <div class="mtile" style="background:${col}22;color:${col};border:1px solid ${col}44">${esc(tileText(s.name))}</div>
+      <div><div class="mnm">${esc(s.name)}${newHtml}</div><div class="mrp">${esc(s.owner)}/${esc(s.repo)}</div><span class="mcat">${esc(s.category || "未分类")}</span></div>
+      <button class="mclose" title="关闭 (Esc)">✕</button>
+    </div>
+    <div class="mstat"><span>${rels.length ? "共 " + (s.total != null ? s.total : rels.length) + " 个版本" : "暂无 Release"}</span></div>
+    ${latestHtml || '<div style="color:var(--faint);font-size:12px;padding:12px 0">该仓库暂无 Release — 点击上方 ↻ 刷新</div>'}
+    ${histHtml ? `<div class="hsec">历史版本</div>${histHtml}${more}` : more}
+    <div class="mops">
+      <button class="btn" data-act="copy">复制链接</button>
+      <button class="btn" data-act="refresh">刷新</button>
+      <button class="btn" data-act="edit">编辑</button>
+      <button class="btn" style="color:var(--red)" data-act="del">删除</button>
+      <a class="ghlink" href="https://github.com/${esc(s.owner)}/${esc(s.repo)}/releases" target="_blank" rel="noopener">GitHub 页面 ↗</a>
+    </div>`;
+  $("ovDetail").classList.add("show");
+}
+function closeDetail() { $("ovDetail").classList.remove("show"); state.detailId = null; }
+
+/* ================= 编辑 / 批量 / 设置 ================= */
+function openEdit(id) {
+  state.editingId = id;
   $("editErr").style.display = "none";
+  const s = id ? state.map[id] : null;
+  $("editTitle").textContent = id ? "编辑软件" : "添加软件";
+  $("fName").value = s ? s.name : "";
+  $("fRepo").value = s ? `${s.owner}/${s.repo}` : "";
   $("fRepo").disabled = !!id;
   $("fRepo").style.opacity = id ? 0.5 : 1;
-  if (id) {
-    $("editTitle").textContent = "编辑软件";
-    const s = softwareMap[id];
-    if (s) {
-      $("fName").value = s.name;
-      $("fRepo").value = `${s.owner}/${s.repo}`;
-      $("fCat").value = s.category;
-      $("fNote").value = s.note;
-    }
-  } else {
-    $("editTitle").textContent = "添加软件";
-    $("fName").value = ""; $("fRepo").value = ""; $("fCat").value = ""; $("fNote").value = "";
-  }
+  $("fCat").value = s ? s.category : "";
+  $("fNote").value = s ? s.note : "";
   $("ovEdit").classList.add("show");
 }
-function closeEdit() { $("ovEdit").classList.remove("show"); editingId = null; }
+function closeEdit() { $("ovEdit").classList.remove("show"); state.editingId = null; }
 
-/* 设置 */
-$("btnSettings").addEventListener("click", async () => {
+async function openSettings() {
   try {
     const d = await api("/settings");
-    settings = d.settings;
-    $("fToken").value = settings.githubToken || "";
-    $("fProxy").value = settings.proxy || "";
-    $("fPerPage").value = settings.perPage || 3;
-    $("fFilter").value = settings.assetFilter || "all";
+    $("fToken").value = d.settings.githubToken || "";
+    $("fProxy").value = d.settings.proxy || "";
+    $("fPerPage").value = d.settings.perPage || 3;
     $("setErr").style.display = "none";
     $("ovSet").classList.add("show");
   } catch (e) { toast(e.message, true); }
+}
+
+/* ================= 事件 ================= */
+$("q").addEventListener("input", (e) => { state.q = e.target.value; render(); });
+$("#plat").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.plat = b.dataset.p;
+  document.querySelectorAll("#plat button").forEach((x) => x.classList.toggle("on", x === b));
+  render();
 });
+$("#tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.cat = b.dataset.c; render();
+});
+$("#grid").addEventListener("click", (e) => {
+  const c = e.target.closest(".card"); if (c) openDetail(c.dataset.id);
+});
+$("ovDetail").addEventListener("click", async (e) => {
+  if (e.target === $("ovDetail")) return closeDetail();
+  const dl = e.target.closest("[data-dl]");
+  if (dl) {
+    window.open(dl.dataset.url, "_blank", "noopener");
+    toast("开始下载 " + dl.dataset.name);
+    return;
+  }
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.classList.contains("mclose")) return closeDetail();
+  const act = b.dataset.act;
+  if (!act) return;
+  const id = state.detailId;
+  const s = state.map[id];
+  try {
+    if (act === "copy") {
+      const latest = latestOf(s);
+      const url = latest && latest.assets.length ? latest.assets[0].url : `https://github.com/${s.owner}/${s.repo}/releases`;
+      toast(await copyText(url) ? "最新版下载链接已复制" : "复制失败，请手动复制", !(await copyText(url)));
+    } else if (act === "refresh") {
+      const d = await api(`/software/${id}/refresh`, { method: "POST" });
+      state.map[id] = { ...state.map[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
+      openDetail(id); toast("已重新拉取");
+    } else if (act === "edit") { closeDetail(); openEdit(id); }
+    else if (act === "del") {
+      if (!confirm("确定删除该软件？")) return;
+      await api(`/software/${id}`, { method: "DELETE" });
+      delete state.map[id];
+      state.software = state.software.filter((x) => x.id !== id);
+      closeDetail(); render(); toast("已删除");
+    }
+  } catch (err) { toast(err.message, true); }
+});
+$("ovDetail").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-more]");
+  if (!b) return;
+  const id = state.detailId; const s = state.map[id];
+  const count = (s.releases || []).length;
+  const page = Math.floor(count / 3) + 1;
+  b.disabled = true; b.textContent = "加载中…";
+  try {
+    const d = await api(`/software/${id}/releases?page=${page}`);
+    state.map[id] = { ...state.map[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
+    openDetail(id);
+  } catch (err) { toast(err.message, true); b.disabled = false; b.textContent = "显示更早…"; }
+});
+
+/* 添加/编辑 */
+$("bAdd").addEventListener("click", () => openEdit(null));
+$("btnEditCancel").addEventListener("click", closeEdit);
+$("btnEditSave").addEventListener("click", async () => {
+  const body = { name: $("fName").value.trim(), repoUrl: $("fRepo").value.trim(), category: $("fCat").value.trim(), note: $("fNote").value.trim() };
+  $("editErr").style.display = "none";
+  try {
+    if (state.editingId) {
+      await api(`/software/${state.editingId}`, { method: "PUT", body: JSON.stringify({ name: body.name, category: body.category, note: body.note }) });
+      toast("已保存");
+    } else {
+      if (!body.repoUrl) return toast("请填写仓库链接", true);
+      await api("/software", { method: "POST", body: JSON.stringify(body) });
+      toast("已添加并拉取最新 Release");
+    }
+    closeEdit(); await loadAll();
+  } catch (e) { $("editErr").textContent = e.message; $("editErr").style.display = "block"; }
+});
+
+/* 批量添加 */
+$("bBatch").addEventListener("click", () => { $("fBatch").value = ""; $("batchErr").style.display = "none"; $("batchStat").textContent = "将逐条校验并添加，重复仓库自动跳过"; $("ovBatch").classList.add("show"); });
+$("btnBatchCancel").addEventListener("click", () => $("ovBatch").classList.remove("show"));
+$("btnBatchGo").addEventListener("click", async () => {
+  const lines = $("fBatch").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  if (!lines.length) return toast("请粘贴至少一个仓库", true);
+  $("batchErr").style.display = "none";
+  const btn = $("btnBatchGo"); btn.disabled = true; btn.textContent = "添加中…";
+  let ok = 0, fail = 0, dup = 0, i = 0;
+  for (const line of lines) {
+    i++;
+    $("batchStat").textContent = `正在添加 ${i}/${lines.length}：${line}`;
+    try {
+      const d = await api("/software", { method: "POST", body: JSON.stringify({ repoUrl: line }) });
+      ok++;
+    } catch (e) {
+      if (e.message.includes("已在清单")) dup++;
+      else { fail++; $("batchErr").textContent = `「${line}」失败：${e.message}`; $("batchErr").style.display = "block"; }
+    }
+  }
+  btn.disabled = false; btn.textContent = "开始添加";
+  toast(`完成：新增 ${ok}，重复 ${dup}，失败 ${fail}`);
+  $("ovBatch").classList.remove("show");
+  await loadAll();
+});
+
+/* 全部刷新 + 设置 */
+$("bRefreshAll").addEventListener("click", checkUpdates);
+$("bSet").addEventListener("click", openSettings);
 $("btnSetCancel").addEventListener("click", () => $("ovSet").classList.remove("show"));
 $("btnSetSave").addEventListener("click", async () => {
   try {
-    const d = await api("/settings", {
-      method: "PUT",
-      body: JSON.stringify({
-        githubToken: $("fToken").value.trim(),
-        proxy: $("fProxy").value.trim(),
-        perPage: parseInt($("fPerPage").value, 10) || 3,
-        assetFilter: $("fFilter").value,
-      }),
-    });
-    settings = d.settings;
-    $("ovSet").classList.remove("show");
-    toast("设置已保存");
-    await loadAll();
+    await api("/settings", { method: "PUT", body: JSON.stringify({
+      githubToken: $("fToken").value.trim(), proxy: $("fProxy").value.trim(),
+      perPage: parseInt($("fPerPage").value, 10) || 3,
+    }) });
+    $("ovSet").classList.remove("show"); toast("设置已保存");
   } catch (e) { $("setErr").textContent = e.message; $("setErr").style.display = "block"; }
 });
 
-/* 点击遮罩关闭 */
-document.querySelectorAll(".overlay").forEach((ov) =>
-  ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("show"); })
-);
+/* 遮罩点击关闭 + Esc */
+document.querySelectorAll(".ov").forEach((ov) => ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("show"); }));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".ov.show").forEach((ov) => ov.classList.remove("show")); });
 
 loadAll();
 </script>
