@@ -92,6 +92,11 @@ server.mjs (入口薄层:静态 + API 路由)
 - 2026-08-06（v0.1.5）：磨砂玻璃 UI——背景光斑层 + 顶栏/卡片/弹层 backdrop-filter 玻璃化（@supports 降级）+ 卡片信息瘦身 6→4 项（仓库行移入弹层）+ 网格加大 225px/18px
 - 2026-08-06（v0.1.6）：卡片显示简介（.note 2 行截断，fNote 编辑已有）；移除仓库内 DESIGN.md
 - 2026-08-06（v0.1.7）：排序（名称/更新时间/Star 级联）+ Star 采集（refresh-stars + check-updates 顺带）+ 卡片 ★ 徽标；修复平台工具写入 EPERM；25 例全绿
+- 2026-08-06（v0.1.8）：排序控件移入统计条行 + 升降序切换（主排序翻转、次级级联固定）
+- 2026-08-06（v0.1.9）：简介双来源——自动 desc（采集 GitHub description）+ 自定义 note 优先（intro() = note || desc）
+- 2026-08-06（v0.2.0）：适配 tools-center v0.12.0 V2 规范（manifest 声明制 + tool.json 发布包标准 version/dataFiles）；平台版 zip
+- 2026-08-06（v0.3.0）：WebDAV 云同步——lib/webdav.mjs + /api/webdav/* 五动作 + 设置弹窗 WebDAV 区 + 密码脱敏；26 例全绿
+- 2026-08-06（v0.3.1）：云端路径改 `workbuddy/github下载/` + 中文路径 URL 编码 + testConnection 修 bug（原空目录不发请求）；webdav 集成测试（本地 mock）；27 例全绿
 
 ### 问题：平台托管工具写 data.json 报 EPERM（v0.1.7 排查）
 
@@ -106,6 +111,15 @@ server.mjs (入口薄层:静态 + API 路由)
 - date（默认）：更新时间 → Star → 名称
 - stars：Star → 更新时间 → 名称
 - Star 为 null（未采集）时按 -1 排最后，不阻塞排序
+
+### WebDAV 云同步记录（v0.3.x，参考积分仪表盘设计）
+- **客户端**：lib/webdav.mjs 零依赖（MKCOL/PUT/GET + Basic 认证），移植平台 lib/core/webdav.js 逻辑做成工具独立版；15s 超时
+- **路径段 URL 编码**：`encPath()` 对每段 encodeURIComponent——支持中文目录名（如 `workbuddy/github下载`），MKCOL/PUT/GET 均用编码路径；集成测试用本地 mock HTTP 服务器验证
+- **密码脱敏**：GET /api/webdav/config 与 GET /api/settings 只返回 `has`（是否已设置），绝不回明文；POST config 密码留空 = 保留原密码
+- **下载保护**：download 前本地先备份（`data.json.bak-<时间戳>`）+ 前端 confirm 覆盖确认；下载后 store.resetCache() 重读
+- **testConnection bug**（v0.3.1 修复）：原实现 `ensureDir(base,user,pass,"")` 空目录 → 循环不执行 → **零请求，测试形同虚设**；改为在真实同步目录建目录（MKCOL）验证登录
+- **安全边界**：备份文件含 WebDAV 密码明文（零配置恢复的代价），README 已标注"仅私人 WebDAV"
+- 云端目录 = 工具 id（原）/ workbuddy/github下载（v0.3.1 用户指定），多工具共用 WebDAV 时各占独立目录
 
 ### UI 磨砂玻璃记录（v0.1.5）
 - 玻璃三要素：半透明底色 + backdrop-filter blur/saturate + 1px 白描边 + inset 顶部高光
