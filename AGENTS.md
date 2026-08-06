@@ -1,6 +1,6 @@
 # AGENTS.md · 项目规则
 
-> 📌 **文档基线**：2026-08-06（commit `2ca093f`）v0.2.0 适配 tools-center v0.12.0 V2 规范
+> 📌 **文档基线**：2026-08-06（commit `a92186f`）v0.2.0 完成（tool.json 发布包标准 + 平台版 zip）
 > **更新文档/代码后，请更新此行**（日期 + 新 commit hash），并在 CHANGELOG 追加版本
 
 ## 技术栈
