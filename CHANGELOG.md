@@ -1,5 +1,12 @@
 # CHANGELOG.md
 
+## v0.3.2 (2026-08-06)
+
+### 按 tools-center v0.12.1 打包标准重新发布
+- **标准打包脚本** `pack-platform.py`（项目根，Python zipfile）：强制正斜杠 `/` 条目分隔符（APPNOTE 规范，禁反斜杠——Linux Info-ZIP unzip 遇反斜杠会 exit=1 误报解压失败）+ 打包后**自检条目名**（无 `\`/绝对路径/`..`/目录条目）
+- tool.json 版本同步 0.3.2；产物：`gh-release-center-platform-v0.3.2.zip`（英文名，Release 资产）+ `平台版-v0.3.2.zip`（桌面存档）
+- 说明：v0.3.0/0.3.1 zip 已实测正斜杠合规；本版将打包流程固化为脚本，后续每次发布执行 `python pack-platform.py . <版本> <输出目录>` 即可
+
 ## v0.3.1 (2026-08-06)
 
 ### WebDAV 云端路径调整
