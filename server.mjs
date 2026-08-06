@@ -161,14 +161,17 @@ async function apiSettings(req, res) {
 }
 
 /** WebDAV 云同步:config 读写(密码脱敏)/test/upload/download/clear
- *  远端目录 = workbuddy/github下载/,数据文件 = data.json(本地 CAP_STORAGE_DIR 的完整数据) */
+ *  远端目录 = workbuddy/github下载/,数据文件 = data.json(本地 CAP_STORAGE_DIR 的完整数据)
+ *  默认地址 = 积分仪表盘同款(192 内网),设置里不填地址时自动使用 */
 const WEBDAV_DIR = "workbuddy/github下载";
+const DEFAULT_WEBDAV_URL = "http://192.168.2.1:6086/";
+const wdUrl = (s) => String(s.webdavUrl || "").trim() || DEFAULT_WEBDAV_URL;
 const DATA_FILE = () => path.join(store.storageDir(), "data.json");
 
 async function apiWebdav(req, res, action) {
   const s = store.getSettings();
   if (action === "config" && req.method === "GET") {
-    return json(res, 200, { ok: true, url: s.webdavUrl, user: s.webdavUser, has: !!s.webdavPass });
+    return json(res, 200, { ok: true, url: s.webdavUrl, user: s.webdavUser, has: !!s.webdavPass, defaultUrl: DEFAULT_WEBDAV_URL });
   }
   if (action === "config" && req.method === "POST") {
     let body;
@@ -181,20 +184,18 @@ async function apiWebdav(req, res, action) {
   }
   if (req.method !== "POST") return json(res, 405, { ok: false, message: "method not allowed" });
   if (action === "test") {
-    try { await webdav.testConnection(s.webdavUrl, s.webdavUser, s.webdavPass, WEBDAV_DIR); return json(res, 200, { ok: true, message: "连接成功" }); }
+    try { await webdav.testConnection(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR); return json(res, 200, { ok: true, message: "连接成功" }); }
     catch (e) { return json(res, 502, { ok: false, message: "连接失败: " + e.message }); }
   }
   if (action === "upload") {
-    if (!s.webdavUrl) return json(res, 400, { ok: false, message: "未配置 WebDAV 地址" });
     try {
-      await webdav.uploadFile(s.webdavUrl, s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json", JSON.stringify(store.load(), null, 2));
+      await webdav.uploadFile(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json", JSON.stringify(store.load(), null, 2));
       return json(res, 200, { ok: true, message: "已上传到云端" });
     } catch (e) { return json(res, 502, { ok: false, message: "上传失败: " + e.message }); }
   }
   if (action === "download") {
-    if (!s.webdavUrl) return json(res, 400, { ok: false, message: "未配置 WebDAV 地址" });
     try {
-      const text = await webdav.downloadFile(s.webdavUrl, s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json");
+      const text = await webdav.downloadFile(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json");
       if (text === null) return json(res, 404, { ok: false, message: "云端没有数据文件,请先上传" });
       JSON.parse(text); // 校验远端数据合法性
       const file = DATA_FILE();

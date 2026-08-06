@@ -212,7 +212,7 @@
     <div class="row"><label>代理地址（可选）</label><input id="fProxy" placeholder="如 http://127.0.0.1:7890"><div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div></div>
     <div class="row"><label>「显示更早」每次增量</label><input id="fPerPage" type="number" min="1" max="50"></div>
     <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><label style="font-weight:500;color:var(--fg)">WebDAV 云同步</label><div class="tips">登录后上传/下载软件清单数据——本地与云端两个目录桥接，换机/重装不丢</div></div>
-    <div class="row"><label>WebDAV 地址</label><input id="fWdUrl" placeholder="如 https://dav.jianguoyun.com/dav/"></div>
+    <div class="row"><label>WebDAV 地址</label><input id="fWdUrl" placeholder="留空使用默认 http://192.168.2.1:6086/"></div>
     <div class="row"><label>用户名</label><input id="fWdUser" placeholder="WebDAV 账号"></div>
     <div class="row"><label>密码</label><input id="fWdPass" type="password" placeholder="输入 WebDAV 密码"></div>
     <div class="row"><div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -460,7 +460,9 @@ async function openSettings() {
     $("fWdUser").value = d.settings.webdavUser || "";
     $("fWdPass").value = "";
     $("fWdPass").placeholder = d.settings.webdavHas ? "已设置,留空保留" : "输入 WebDAV 密码";
-    $("wdStatus").textContent = d.settings.webdavHas ? "已配置,可直接上传/下载" : "尚未配置 WebDAV";
+    $("wdStatus").textContent = d.settings.webdavHas
+      ? (d.settings.webdavUrl ? "已配置,可直接上传/下载" : "已配置(使用默认地址),可直接上传/下载")
+      : "尚未配置 WebDAV(地址留空将使用默认 " + (d.settings.defaultUrl || "http://192.168.2.1:6086/") + ")";
     $("setErr").style.display = "none";
     $("ovSet").classList.add("show");
   } catch (e) { toast(e.message, true); }

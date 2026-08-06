@@ -5,7 +5,7 @@
   "group": "工具",
   "icon": "📥",
   "type": "app",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "runtime": "node",
   "capabilities": ["storage"],
   "entry": "server.mjs",

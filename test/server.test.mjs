@@ -192,12 +192,13 @@ test("webdav: 配置保存/密码脱敏/清空", async () => {
   let r = await req("POST", "/api/webdav/config", { url: "https://dav.example.com/dav/", user: "u1", pass: "secret" });
   assert.equal(r.status, 200);
   assert.equal(r.data.ok, true);
-  // GET config:密码不返回明文,只回 has
+  // GET config:密码不返回明文,只回 has;带默认地址
   r = await req("GET", "/api/webdav/config");
   assert.equal(r.data.url, "https://dav.example.com/dav/");
   assert.equal(r.data.user, "u1");
   assert.equal(r.data.has, true);
   assert.equal(r.data.pass, undefined, "config 不返回密码明文");
+  assert.equal(r.data.defaultUrl, "http://192.168.2.1:6086/", "返回默认 WebDAV 地址");
   // GET /api/settings 同样脱敏
   r = await req("GET", "/api/settings");
   assert.equal(r.data.settings.webdavHas, true);
