@@ -1,6 +1,6 @@
 # AGENTS.md · 项目规则
 
-> 📌 **文档基线**：2026-08-06（commit `00c031f`）v0.3.1 WebDAV 路径 workbuddy/github下载
+> 📌 **文档基线**：2026-08-06（commit `f4581cb`）v0.3.1 完成 · README/DEVELOPMENT 同步 WebDAV 文档
 > **更新文档/代码后，请更新此行**（日期 + 新 commit hash），并在 CHANGELOG 追加版本
 
 ## 技术栈
