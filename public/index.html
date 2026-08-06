@@ -24,11 +24,21 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--fg);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;min-height:100vh}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(640px 420px at 12% -6%, rgba(255,146,146,.16), transparent 70%),
+      radial-gradient(760px 520px at 90% 110%, rgba(146,255,255,.11), transparent 70%),
+      radial-gradient(540px 400px at 62% 128%, rgba(167,139,250,.10), transparent 70%)}
   a{color:var(--cyan);text-decoration:none}
   a:hover{text-decoration:underline}
 
   /* ---------- 顶栏 ---------- */
-  header{position:sticky;top:0;z-index:20;background:rgba(20,20,25,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 20px}
+  header{position:sticky;top:0;z-index:20;background:rgba(20,20,25,.55);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);border-bottom:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.06);padding:12px 20px}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    header{background:rgba(20,20,25,.94)}
+    .card{background:rgba(255,255,255,.05)}
+    .modal{background:#1d1d26}
+  }
   .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .logo{font-size:17px;font-weight:500;letter-spacing:.3px;white-space:nowrap}
   .logo b{color:var(--pink)}
@@ -53,13 +63,12 @@
 
   /* ---------- 主体 ---------- */
   main{max-width:1180px;margin:0 auto;padding:6px 20px 80px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;position:relative;transition:border-color .15s}
-  .card:hover{border-color:var(--pink)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:18px}
+  .card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;cursor:pointer;position:relative;transition:transform .15s,border-color .15s;backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  .card:hover{border-color:rgba(255,146,146,.75);transform:translateY(-2px)}
   .tile{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:13px;margin-bottom:10px}
   .nm{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .rp{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-  .st{margin-top:11px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim)}
+  .st{margin-top:5px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim)}
   .ver{font-family:Consolas,monospace;color:var(--green);background:rgba(109,213,140,.09);border:1px solid rgba(109,213,140,.25);padding:1px 7px;border-radius:6px;font-size:11.5px}
   .ver.none{color:var(--faint);background:transparent;border-color:var(--line)}
   .new{position:absolute;top:10px;right:10px;background:var(--coral);color:var(--on-pink);font-size:10px;font-weight:500;padding:2px 7px;border-radius:8px}
@@ -69,13 +78,15 @@
   .empty .big{font-size:38px;margin-bottom:10px}
 
   /* ---------- 弹层 ---------- */
-  .ov{position:fixed;inset:0;background:rgba(8,8,12,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+  .ov{position:fixed;inset:0;background:rgba(8,8,12,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
   .ov.show{display:flex}
-  .modal{background:var(--panel);border:1px solid #3a3a48;border-radius:14px;width:min(640px,100%);max-height:84vh;overflow:auto;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .modal{background:rgba(29,29,38,.82);backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);border:1px solid rgba(255,255,255,.14);border-radius:14px;width:min(640px,100%);max-height:84vh;overflow:auto;padding:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 50px rgba(0,0,0,.5)}
   .mhead{display:flex;gap:12px;align-items:flex-start}
   .mtile{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px;flex-shrink:0}
   .mnm{font-size:16px;font-weight:500}
   .mrp{font-size:12px;color:var(--faint);margin-top:3px}
+  .mrp a{color:var(--faint)}
+  .mrp a:hover{color:var(--cyan)}
   .mcat{display:inline-block;font-size:11px;color:var(--pink);background:rgba(255,146,146,.12);border:1px solid rgba(255,146,146,.3);padding:1px 8px;border-radius:20px;margin-top:6px}
   .mclose{margin-left:auto;background:var(--panel2);border:1px solid var(--line);color:var(--dim);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:14px;flex-shrink:0}
   .mclose:hover{border-color:var(--pink);color:var(--pink)}
@@ -302,12 +313,14 @@ function card(s) {
   const time = latest ? latest.publishedAt : s.createdAt;
   return `<div class="card" data-id="${esc(s.id)}">
     <span class="hint">查看详情</span>
-    <div style="display:flex;gap:10px">
+    <div style="display:flex;gap:10px;align-items:flex-start">
       <div class="tile" style="background:${col}22;color:${col};border:1px solid ${col}44">${esc(tileText(s.name))}</div>
-      <div style="flex:1;min-width:0"><div class="nm">${esc(s.name)}</div><div class="rp">${esc(s.owner)}/${esc(s.repo)}</div></div>
+      <div style="flex:1;min-width:0">
+        <div class="nm">${esc(s.name)}</div>
+        <div class="st">${verHtml}<span>${fmtTime(time)}</span></div>
+      </div>
       ${newHtml}
     </div>
-    <div class="st">${verHtml}<span>${fmtTime(time)}</span></div>
   </div>`;
 }
 function render() {
@@ -354,7 +367,7 @@ function openDetail(id) {
   $("detailModal").innerHTML = `
     <div class="mhead">
       <div class="mtile" style="background:${col}22;color:${col};border:1px solid ${col}44">${esc(tileText(s.name))}</div>
-      <div><div class="mnm">${esc(s.name)}${newHtml}</div><div class="mrp">${esc(s.owner)}/${esc(s.repo)}</div><span class="mcat">${esc(s.category || "未分类")}</span></div>
+      <div><div class="mnm">${esc(s.name)}${newHtml}</div><div class="mrp"><a href="https://github.com/${esc(s.owner)}/${esc(s.repo)}" target="_blank" rel="noopener">${esc(s.owner)}/${esc(s.repo)}</a></div><span class="mcat">${esc(s.category || "未分类")}</span></div>
       <button class="mclose" title="关闭 (Esc)">✕</button>
     </div>
     <div class="mstat"><span>${rels.length ? "共 " + (s.total != null ? s.total : rels.length) + " 个版本" : "暂无 Release"}</span></div>
