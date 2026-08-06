@@ -208,7 +208,7 @@
 <div class="ov" id="ovSet">
   <div class="modal" style="max-width:520px">
     <h3>设置</h3>
-    <div class="row"><label>GitHub Token（可选）</label><input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库"><div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div></div>
+    <div class="row"><label>GitHub Token（可选）</label><div style="display:flex;gap:6px"><input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库" style="flex:1"><button class="btn" id="btnTokenClear" title="清除已保存的 Token">清除</button></div><div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div></div>
     <div class="row"><label>代理地址（可选）</label><input id="fProxy" placeholder="如 http://127.0.0.1:7890"><div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div></div>
     <div class="row"><label>「显示更早」每次增量</label><input id="fPerPage" type="number" min="1" max="50"></div>
     <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><label style="font-weight:500;color:var(--fg)">WebDAV 云同步</label><div class="tips">登录后上传/下载软件清单数据——本地与云端两个目录桥接，换机/重装不丢</div></div>
@@ -319,7 +319,7 @@ async function loadAll() {
     const d = await api("/software");
     state.software = d.software;
     state.map = {};
-    d.software.forEach((s) => (state.map[s.id] = s));
+    d.software.forEach((s) => (state.map[s.id] = { ...s, page: 1 }));
     render();
   } catch (e) { toast(e.message, true); }
 }
@@ -335,7 +335,11 @@ async function checkUpdates() {
     (d.hasNew || []).forEach((id) => (state.hasNew[id] = true));
     render();
     await loadAll();
-    toast(d.hasNew?.length ? `发现 ${d.hasNew.length} 个软件有新版` : "全部是最新版本");
+    const parts = [];
+    if (d.hasNew?.length) parts.push(`发现 ${d.hasNew.length} 个软件有新版`);
+    else parts.push("全部是最新版本");
+    if (d.failed?.length) parts.push(`${d.failed.length} 个检查失败(${d.failed.map((f) => f.name).join("、")})`);
+    toast(parts.join("；"));
   } catch (e) { toast(e.message, true); }
   finally { state.checking = false; btn.disabled = false; btn.textContent = "全部刷新"; }
 }
@@ -505,7 +509,8 @@ $("ovDetail").addEventListener("click", async (e) => {
     if (act === "copy") {
       const latest = latestOf(s);
       const url = latest && latest.assets.length ? latest.assets[0].url : `https://github.com/${s.owner}/${s.repo}/releases`;
-      toast(await copyText(url) ? "最新版下载链接已复制" : "复制失败，请手动复制", !(await copyText(url)));
+      const ok = await copyText(url); // 只调一次(剪贴板 + 结果)
+      toast(ok ? "最新版下载链接已复制" : "复制失败，请手动复制", !ok);
     } else if (act === "refresh") {
       const d = await api(`/software/${id}/refresh`, { method: "POST" });
       state.map[id] = { ...state.map[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
@@ -524,12 +529,15 @@ $("ovDetail").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-more]");
   if (!b) return;
   const id = state.detailId; const s = state.map[id];
-  const count = (s.releases || []).length;
-  const page = Math.floor(count / 3) + 1;
+  // 按已加载页数请求下一页(与 perPage 配置解耦,防跳页漏版本)
+  const page = (s.page || 1) + 1;
   b.disabled = true; b.textContent = "加载中…";
   try {
     const d = await api(`/software/${id}/releases?page=${page}`);
-    state.map[id] = { ...state.map[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
+    state.map[id] = { ...state.map[id], releases: d.releases, hasMore: d.hasMore, total: d.total, page };
+    // 同步 software 引用(弹层与网格/排序数据一致)
+    const si = state.software.find((x) => x.id === id);
+    if (si && si.cache) { si.cache.releases = d.releases; si.cache.hasMore = d.hasMore; }
     openDetail(id);
   } catch (err) { toast(err.message, true); b.disabled = false; b.textContent = "显示更早…"; }
 });
@@ -597,6 +605,13 @@ $("btnSetSave").addEventListener("click", async () => {
     }) });
     $("ovSet").classList.remove("show"); toast("设置已保存");
   } catch (e) { $("setErr").textContent = e.message; $("setErr").style.display = "block"; }
+});
+$("btnTokenClear").addEventListener("click", async () => {
+  try {
+    await api("/settings", { method: "PUT", body: JSON.stringify({ githubToken: "__CLEAR__" }) });
+    $("fToken").value = ""; $("fToken").placeholder = "ghp_... 提高速率并支持私有仓库";
+    toast("Token 已清除");
+  } catch (e) { toast(e.message, true); }
 });
 
 /* ---------- WebDAV 云同步 ---------- */

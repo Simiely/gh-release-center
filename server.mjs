@@ -41,7 +41,8 @@ async function readBody(req) {
   }
   if (!chunks.length) return {};
   try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return parsed && typeof parsed === "object" ? parsed : {}; // 字面 null/标量 → 空对象
   } catch {
     throw new Error("invalid JSON body");
   }
@@ -158,11 +159,12 @@ async function apiSettings(req, res) {
   if (req.method === "PUT") {
     let body;
     try { body = await readBody(req); } catch (e) { return json(res, 400, { ok: false, message: e.message }); }
-    // Token 留空 = 保留原值(与 WebDAV 密码同语义,防误清)
-    if (body.githubToken !== undefined && String(body.githubToken).trim() !== "") {
-      body.githubToken = String(body.githubToken).trim();
-    } else {
-      delete body.githubToken;
+    // Token:留空 = 保留原值;显式 "__CLEAR__" = 清除
+    if (body.githubToken !== undefined) {
+      const t = String(body.githubToken).trim();
+      if (t === "__CLEAR__") body.githubToken = "";
+      else if (t !== "") body.githubToken = t;
+      else delete body.githubToken;
     }
     store.updateSettings(body);
     // 不回传 settings 全量(避免凭证明文回显)
@@ -248,18 +250,21 @@ export function createServer(deps = {}) {
         const settings = store.getSettings();
         const data = store.load();
         const hasNew = [];
+        const failed = [];
         for (const s of data.software) {
           const r = await github.fetchReleases({ owner: s.owner, repo: s.repo, page: 1, perPage: 1, token: settings.githubToken, proxy: settings.proxy });
           if (r.ok && r.releases.length) {
             const cached = s.cache?.releases?.[0]?.tag;
             if (cached && cached !== r.releases[0].tag) hasNew.push(s.id);
+          } else {
+            failed.push({ id: s.id, name: s.name, code: r.code || "", message: r.message || "" });
           }
           // 顺带刷新 star + 自动简介(失败静默,不影响更新检查)
           const info = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
           if (info.ok) { s.stars = info.info.stars ?? null; s.desc = info.info.desc ?? s.desc; }
         }
         store.save();
-        return json(res, 200, { ok: true, hasNew });
+        return json(res, 200, { ok: true, hasNew, failed });
       }
       // POST /api/refresh-stars — 串行拉取全部仓库 star 数并缓存
       if (pathname === "/api/refresh-stars" && req.method === "POST") {
