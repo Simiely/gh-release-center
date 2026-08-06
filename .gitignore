@@ -1,0 +1,9 @@
+# 数据目录(独立运行 fallback)
+.data/
+
+# 平台部署副本
+tools/
+
+# 日志与临时
+*.log
+node_modules/

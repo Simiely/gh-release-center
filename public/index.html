@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>软件下载中心</title>
+<style>
+  :root{
+    --bg:#141419; --panel:#1d1d26; --panel2:#24242f; --line:#2e2e3d;
+    --fg:#e8e8f0; --dim:#9a9ab0; --faint:#6c6c85;
+    --pink:#ff6b9d; --pink2:#ff8fb8; --accent:#a78bfa;
+    --green:#4ade80; --red:#f87171; --amber:#fbbf24;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--fg);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    min-height:100vh;
+  }
+  a{color:var(--pink2);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* 顶栏 */
+  header{
+    position:sticky;top:0;z-index:10;
+    background:rgba(20,20,25,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    padding:14px 24px;display:flex;align-items:center;gap:14px;
+  }
+  header h1{font-size:19px;font-weight:700;letter-spacing:.3px}
+  header h1 .dot{color:var(--pink)}
+  header .spacer{flex:1}
+  .btn{
+    border:1px solid var(--line);background:var(--panel2);color:var(--fg);
+    padding:7px 14px;border-radius:9px;cursor:pointer;font-size:13px;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .btn:hover{border-color:var(--pink);color:var(--pink2)}
+  .btn.primary{background:linear-gradient(135deg,#ff6b9d,#a78bfa);border:none;color:#fff;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.12);color:#fff}
+  .btn.small{padding:3px 9px;font-size:12px;border-radius:7px}
+  .btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+
+  /* 空态 */
+  .empty{
+    text-align:center;color:var(--dim);padding:70px 20px;border:1px dashed var(--line);
+    border-radius:var(--radius);margin-top:20px;
+  }
+  .empty .big{font-size:44px;margin-bottom:12px}
+
+  /* 软件卡片 */
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:16px;overflow:hidden;
+  }
+  .card-head{
+    padding:14px 18px;display:flex;align-items:flex-start;gap:10px;
+  }
+  .card-head .cat{
+    font-size:11px;color:var(--pink2);background:rgba(255,107,157,.12);
+    border:1px solid rgba(255,107,157,.3);padding:2px 8px;border-radius:20px;white-space:nowrap;
+  }
+  .card-head h2{font-size:16px;font-weight:600}
+  .card-head .repo{font-size:12px;color:var(--dim);margin-top:3px}
+  .card-head .note{font-size:12.5px;color:var(--dim);margin-top:6px}
+  .card-head .ops{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
+  .stat{
+    margin-left:14px;font-size:11.5px;color:var(--faint);white-space:nowrap;padding-top:4px;text-align:right;
+  }
+
+  /* Release 列表 */
+  .rel-list{border-top:1px solid var(--line)}
+  .rel{
+    padding:10px 18px;display:flex;gap:12px;align-items:flex-start;
+    border-bottom:1px solid var(--line);background:rgba(255,255,255,.012);
+  }
+  .rel:last-child{border-bottom:none}
+  .rel .ver{
+    font-family:Consolas,monospace;font-size:13px;color:var(--accent);
+    background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);
+    padding:2px 8px;border-radius:6px;white-space:nowrap;margin-top:1px;
+  }
+  .rel .meta{flex:1;min-width:0}
+  .rel .meta .time{font-size:11.5px;color:var(--faint)}
+  .rel .meta .pre{font-size:10px;color:var(--amber);border:1px solid rgba(251,191,36,.4);border-radius:4px;padding:0 4px;margin-left:6px}
+  .assets{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .asset{
+    display:inline-flex;align-items:center;gap:5px;font-size:12px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--fg);
+    padding:4px 10px;border-radius:7px;cursor:pointer;transition:.15s;
+  }
+  .asset:hover{border-color:var(--green);color:var(--green)}
+  .asset .sz{color:var(--faint);font-size:11px}
+  .asset .dl{color:var(--faint);font-size:11px}
+
+  .rel-foot{padding:10px 18px;display:flex;gap:8px;align-items:center}
+  .rel-foot .more{
+    border:1px dashed var(--line);background:transparent;color:var(--dim);
+    padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12.5px;flex:1;
+  }
+  .rel-foot .more:hover{border-color:var(--pink);color:var(--pink2)}
+  .rel-foot .hint{font-size:11.5px;color:var(--faint)}
+
+  /* 加载条 */
+  #loading{text-align:center;color:var(--faint);padding:30px;display:none}
+  .spinner{
+    width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--pink);
+    border-radius:50%;margin:0 auto 10px;animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* 弹层 */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;
+    display:none;align-items:flex-start;justify-content:center;padding:60px 20px;
+    backdrop-filter:blur(2px);
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    width:100%;max-width:520px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal h3{font-size:16px;margin-bottom:16px}
+  .modal .row{margin-bottom:13px}
+  .modal label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:5px}
+  .modal input,.modal select,.modal textarea{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:8px;padding:8px 11px;font-size:13.5px;outline:none;
+  }
+  .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--pink)}
+  .modal textarea{resize:vertical;min-height:56px}
+  .modal .tips{font-size:11.5px;color:var(--faint);margin-top:4px;line-height:1.5}
+  .modal .foot{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+  .modal .err{color:var(--red);font-size:12.5px;margin-top:10px;display:none}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    padding:10px 18px;border-radius:10px;font-size:13px;z-index:99;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);display:none;max-width:80vw;
+  }
+  .toast.err{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot">📥</span> 软件下载中心</h1>
+  <div class="spacer"></div>
+  <button class="btn" id="btnSettings">⚙️ 设置</button>
+  <button class="btn primary" id="btnAdd">+ 添加软件</button>
+</header>
+
+<main>
+  <div id="loading"><div class="spinner"></div>加载中…</div>
+  <div id="list"></div>
+</main>
+
+<!-- 添加/编辑弹层 -->
+<div class="overlay" id="ovEdit">
+  <div class="modal">
+    <h3 id="editTitle">添加软件</h3>
+    <div class="row">
+      <label>名称（留空自动用仓库名）</label>
+      <input id="fName" placeholder="如：Tools Center">
+    </div>
+    <div class="row">
+      <label>GitHub 仓库链接 <span style="color:var(--red)">*</span></label>
+      <input id="fRepo" placeholder="https://github.com/owner/repo 或 owner/repo">
+      <div class="tips">添加后自动拉取最新 Release</div>
+    </div>
+    <div class="row">
+      <label>分类</label>
+      <input id="fCat" placeholder="如：平台工具 / 插件 / 脚本">
+    </div>
+    <div class="row">
+      <label>备注</label>
+      <textarea id="fNote" placeholder="可选"></textarea>
+    </div>
+    <div class="err" id="editErr"></div>
+    <div class="foot">
+      <button class="btn" id="btnEditCancel">取消</button>
+      <button class="btn primary" id="btnEditSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置弹层 -->
+<div class="overlay" id="ovSet">
+  <div class="modal">
+    <h3>⚙️ 设置</h3>
+    <div class="row">
+      <label>GitHub Token（可选）</label>
+      <input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库">
+      <div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div>
+    </div>
+    <div class="row">
+      <label>代理地址（可选）</label>
+      <input id="fProxy" placeholder="如 http://127.0.0.1:7890">
+      <div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div>
+    </div>
+    <div class="row">
+      <label>「加载更多」每次增量</label>
+      <input id="fPerPage" type="number" min="1" max="50" value="3">
+    </div>
+    <div class="row">
+      <label>默认平台过滤</label>
+      <select id="fFilter">
+        <option value="all">全部</option>
+        <option value="win">🪟 Windows</option>
+        <option value="mac">🍎 macOS</option>
+        <option value="linux">🐧 Linux</option>
+      </select>
+    </div>
+    <div class="err" id="setErr"></div>
+    <div class="foot">
+      <button class="btn" id="btnSetCancel">取消</button>
+      <button class="btn primary" id="btnSetSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const BASE = window.__BASE__ || "";
+const $ = (id) => document.getElementById(id);
+
+const PLATFORM_ICON = { win: "🪟", mac: "🍎", linux: "🐧" };
+const PLATFORM_NAME = { win: "Windows", mac: "macOS", linux: "Linux" };
+
+let settings = { perPage: 3, assetFilter: "all" };
+let editingId = null; // 编辑中的软件 id(null = 新增)
+
+/* ---------- 工具 ---------- */
+async function api(path, opts = {}) {
+  const res = await fetch(BASE + "/api" + path, {
+    headers: { "Content-Type": "application/json" },
+    ...opts,
+  });
+  const data = await res.json().catch(() => ({ ok: false, message: "响应解析失败" }));
+  if (!data.ok) throw new Error(data.message || `请求失败(${res.status})`);
+  return data;
+}
+
+let toastTimer = null;
+function toast(msg, isErr) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast" + (isErr ? " err" : "");
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.display = "none"), 3200);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function fmtTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/* ---------- 渲染 ---------- */
+function matchFilter(asset) {
+  const f = settings.assetFilter;
+  if (f === "all") return true;
+  if (asset.platform === "other") return false;
+  return asset.platform === f;
+}
+
+function renderCard(s) {
+  const releases = (s.releases || []).slice(); // 最新在前
+  const relHtml = releases.map((r) => {
+    const assets = (r.assets || []).filter(matchFilter);
+    if (!assets.length) return "";
+    const assetBtns = assets.map((a) => `
+      <a class="asset" href="${esc(a.url)}" target="_blank" rel="noopener" title="下载 ${esc(a.name)}">
+        <span>${PLATFORM_ICON[a.platform] || "📦"}</span> ${esc(a.name)}
+        ${a.sizeText ? `<span class="sz">${esc(a.sizeText)}</span>` : ""}
+        ${a.downloads ? `<span class="dl">↓${a.downloads}</span>` : ""}
+      </a>`).join("");
+    const allFilteredOut = (r.assets || []).length && !assets.length;
+    if (allFilteredOut) return "";
+    return `
+    <div class="rel">
+      <div class="ver">${esc(r.tag)}${r.prerelease ? '<span class="pre">预览版</span>' : ""}</div>
+      <div class="meta">
+        <div class="time">${fmtTime(r.publishedAt)}</div>
+        <div class="assets">${assetBtns || '<span style="color:var(--faint);font-size:12px">（无匹配平台的资产）</span>'}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const moreBtn = s.hasMore ? `
+    <div class="rel-foot">
+      <button class="more" data-more="${esc(s.id)}">加载更多 ↓</button>
+      <span class="hint">${s.total ? "共 " + s.total + " 个版本" : "还有更多版本"}</span>
+    </div>` : (s.total ? `
+    <div class="rel-foot"><span class="hint">共 ${s.total} 个版本</span></div>` : "");
+
+  return `
+  <div class="card" data-id="${esc(s.id)}">
+    <div class="card-head">
+      <div>
+        <h2>${esc(s.name)} <span class="cat">${esc(s.category || "未分类")}</span></h2>
+        <div class="repo"><a href="https://github.com/${esc(s.owner)}/${esc(s.repo)}" target="_blank" rel="noopener">${esc(s.owner)}/${esc(s.repo)}</a></div>
+        ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
+      </div>
+      <div class="stat">${s.releaseCount || s.releases?.length || 0} 个版本已加载</div>
+      <div class="ops">
+        <button class="btn small" data-refresh="${esc(s.id)}" title="重新拉取最新">↻</button>
+        <button class="btn small" data-edit="${esc(s.id)}" title="编辑">✎</button>
+        <button class="btn small danger" data-del="${esc(s.id)}" title="删除">✕</button>
+      </div>
+    </div>
+    <div class="rel-list">${relHtml || '<div style="padding:14px 18px;color:var(--faint);font-size:12.5px">暂无已加载的 Release — 点击上方 ↻ 拉取</div>'}</div>
+    ${moreBtn}
+  </div>`;
+}
+
+async function loadAll() {
+  $("loading").style.display = "block";
+  $("list").innerHTML = "";
+  try {
+    const d = await api("/software");
+    const listEl = $("list");
+    if (!d.software.length) {
+      listEl.innerHTML = `
+        <div class="empty">
+          <div class="big">📭</div>
+          <div>清单为空，点击右上角「+ 添加软件」开始收录</div>
+        </div>`;
+    } else {
+      listEl.innerHTML = d.software.map(renderCard).join("");
+    }
+  } catch (e) {
+    $("list").innerHTML = `<div class="empty"><div class="big">⚠️</div><div>${esc(e.message)}</div></div>`;
+  } finally {
+    $("loading").style.display = "none";
+  }
+}
+
+/* ---------- 事件 ---------- */
+$("list").addEventListener("click", async (ev) => {
+  const t = ev.target;
+  const id = t.dataset.refresh || t.dataset.edit || t.dataset.del || t.dataset.more;
+  if (!id) return;
+  try {
+    if (t.dataset.refresh !== undefined) {
+      await api(`/software/${id}/refresh`, { method: "POST" });
+      toast("已重新拉取");
+      await loadAll();
+    } else if (t.dataset.edit !== undefined) {
+      openEdit(id);
+    } else if (t.dataset.del !== undefined) {
+      if (!confirm("确定删除该软件？")) return;
+      await api(`/software/${id}`, { method: "DELETE" });
+      toast("已删除");
+      await loadAll();
+    } else if (t.dataset.more !== undefined) {
+      const card = t.closest(".card");
+      const rels = card.querySelectorAll(".rel").length;
+      const page = Math.floor(rels / settings.perPage) + 1;
+      t.disabled = true;
+      t.textContent = "加载中…";
+      try {
+        const d = await api(`/software/${id}/releases?page=${page}`);
+        if (d.hasMore === false && !d.releases.length) toast("没有更多版本了", true);
+        await loadAll();
+      } catch (e) {
+        toast(e.message, true);
+        t.disabled = false;
+        t.textContent = "加载更多 ↓";
+      }
+    }
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
+
+/* 添加 / 编辑 */
+$("btnAdd").addEventListener("click", () => openEdit(null));
+$("btnEditCancel").addEventListener("click", () => closeEdit());
+$("btnEditSave").addEventListener("click", async () => {
+  const repo = $("fRepo").value.trim();
+  if (!editingId && !repo) return toast("请填写仓库链接", true);
+  const body = {
+    name: $("fName").value.trim(),
+    repoUrl: repo,
+    category: $("fCat").value.trim(),
+    note: $("fNote").value.trim(),
+  };
+  try {
+    if (editingId) {
+      await api(`/software/${editingId}`, { method: "PUT", body: JSON.stringify({ name: body.name, category: body.category, note: body.note }) });
+      toast("已保存");
+    } else {
+      await api("/software", { method: "POST", body: JSON.stringify(body) });
+      toast("已添加并拉取最新 Release");
+    }
+    closeEdit();
+    await loadAll();
+  } catch (e) {
+    $("editErr").textContent = e.message;
+    $("editErr").style.display = "block";
+  }
+});
+
+async function openEdit(id) {
+  editingId = id;
+  $("editErr").style.display = "none";
+  $("fRepo").disabled = !!id;
+  $("fRepo").style.opacity = id ? 0.5 : 1;
+  if (id) {
+    $("editTitle").textContent = "编辑软件";
+    const d = await api("/software");
+    const s = d.software.find((x) => x.id === id);
+    if (s) {
+      $("fName").value = s.name;
+      $("fRepo").value = `${s.owner}/${s.repo}`;
+      $("fCat").value = s.category;
+      $("fNote").value = s.note;
+    }
+  } else {
+    $("editTitle").textContent = "添加软件";
+    $("fName").value = ""; $("fRepo").value = ""; $("fCat").value = ""; $("fNote").value = "";
+  }
+  $("ovEdit").classList.add("show");
+}
+function closeEdit() { $("ovEdit").classList.remove("show"); editingId = null; }
+
+/* 设置 */
+$("btnSettings").addEventListener("click", async () => {
+  try {
+    const d = await api("/settings");
+    settings = d.settings;
+    $("fToken").value = settings.githubToken || "";
+    $("fProxy").value = settings.proxy || "";
+    $("fPerPage").value = settings.perPage || 3;
+    $("fFilter").value = settings.assetFilter || "all";
+    $("setErr").style.display = "none";
+    $("ovSet").classList.add("show");
+  } catch (e) { toast(e.message, true); }
+});
+$("btnSetCancel").addEventListener("click", () => $("ovSet").classList.remove("show"));
+$("btnSetSave").addEventListener("click", async () => {
+  try {
+    const d = await api("/settings", {
+      method: "PUT",
+      body: JSON.stringify({
+        githubToken: $("fToken").value.trim(),
+        proxy: $("fProxy").value.trim(),
+        perPage: parseInt($("fPerPage").value, 10) || 3,
+        assetFilter: $("fFilter").value,
+      }),
+    });
+    settings = d.settings;
+    $("ovSet").classList.remove("show");
+    toast("设置已保存");
+    await loadAll();
+  } catch (e) { $("setErr").textContent = e.message; $("setErr").style.display = "block"; }
+});
+
+/* 点击遮罩关闭 */
+document.querySelectorAll(".overlay").forEach((ov) =>
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("show"); })
+);
+
+loadAll();
+</script>
+</body>
+</html>
