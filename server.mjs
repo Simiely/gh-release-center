@@ -70,6 +70,7 @@ async function apiSoftware(req, res, github) {
     const list = store.load().software.map((s) => ({
       id: s.id, name: s.name, owner: s.owner, repo: s.repo,
       category: s.category, note: s.note, desc: s.desc ?? null, createdAt: s.createdAt,
+      pushedAt: s.pushedAt ?? null,
       stars: s.stars ?? null,
       total: s.cache?.total ?? null,
       hasMore: !!(s.cache && s.cache.hasMore),

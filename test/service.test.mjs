@@ -51,6 +51,16 @@ test("checkUpdates: 拉取失败进 failed 不中断", async () => {
   assert.deepEqual(r.hasNew, ["y"]);
 });
 
+test("checkUpdates: 顺带采集推送日期(pushedAt)", async () => {
+  const data = { software: [mkSoftware("a", "v1")] };
+  const github = {
+    fetchReleases: async () => ({ ok: true, releases: [{ tag: "v1" }] }),
+    fetchRepoInfo: async () => ({ ok: true, info: { stars: 1, desc: "d", pushedAt: "2026-08-01T00:00:00Z" } }),
+  };
+  await checkUpdates(github, data);
+  assert.equal(data.software[0].pushedAt, "2026-08-01T00:00:00Z", "采集 pushedAt");
+});
+
 test("refreshStars: updated 计数 + 失败收集", async () => {
   const data = { software: [mkSoftware("a"), mkSoftware("b")] };
   const github = {

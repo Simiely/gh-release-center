@@ -162,7 +162,7 @@
     <div class="stats" id="stats"></div>
     <div class="sort">
       <select class="sel" id="bSort" title="排序方式">
-        <option value="date">按更新日期</option>
+        <option value="date">按推送日期</option>
         <option value="stars">按 Star</option>
         <option value="name">按名称</option>
       </select>
@@ -287,7 +287,8 @@ function platOf(s) { return (s.releases || []).flatMap((r) => (r.assets || []).m
 function latestOf(s) { return (s.releases || [])[0] || null; }
 /* 简介双来源:自定义 note 优先,否则显示自动获取的仓库描述 */
 function intro(s) { return (s.note && s.note.trim()) ? s.note.trim() : (s.desc || ""); }
-function byDate(s) { const r = s.releases?.[0]?.publishedAt; return r ? Date.parse(r) : (s.createdAt || 0); }
+/* 推送日期:仓库最后推送(pushedAt)优先,未采集时退化为 release 发布时间/创建时间 */
+function byDate(s) { const r = s.pushedAt || s.releases?.[0]?.publishedAt; return r ? Date.parse(r) : (s.createdAt || 0); }
 function fmtStars(n) { return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); }
 /* 级联排序:主排序相同 → 更新时间 → 名称兜底;dir 控制主排序方向(次级固定) */
 function cmpSort(a, b) {
@@ -361,7 +362,7 @@ function card(s) {
   const latest = latestOf(s);
   const verHtml = latest ? `<span class="ver">${esc(latest.tag)}</span>` : `<span class="ver none">暂无 Release</span>`;
   const newHtml = state.hasNew[s.id] ? '<span class="new">NEW</span>' : "";
-  const time = latest ? latest.publishedAt : s.createdAt;
+  const time = s.pushedAt || (latest ? latest.publishedAt : null) || s.createdAt;
   return `<div class="card" data-id="${esc(s.id)}">
     <span class="hint">查看详情</span>
     <div style="display:flex;gap:10px;align-items:flex-start">
@@ -373,7 +374,7 @@ function card(s) {
       ${newHtml}
     </div>
     ${intro(s) ? `<div class="note">${esc(intro(s))}</div>` : ""}
-    <div class="time"><span>${fmtTime(time)}</span>${s.stars != null ? `<span class="star">★ ${fmtStars(s.stars)}</span>` : ""}</div>
+    <div class="time"><span>推送 ${fmtTime(time)}</span>${s.stars != null ? `<span class="star">★ ${fmtStars(s.stars)}</span>` : ""}</div>
   </div>`;
 }
 function render() {
