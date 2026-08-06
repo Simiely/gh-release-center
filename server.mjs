@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as store from "./lib/store.mjs";
 import { parseRepoUrl, fetchReleases, fetchRepoInfo } from "./lib/github.mjs";
 import * as webdav from "./lib/webdav.mjs";
+import * as service from "./lib/service.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -84,7 +85,7 @@ async function apiSoftware(req, res, github) {
     if (!parsed) return json(res, 400, { ok: false, code: "bad_repo", message: "无法解析仓库链接,支持 owner/repo 或 github.com 链接" });
     const settings = store.getSettings();
     // 一次请求双重用途:拉第一页失败(404/网络/限速)即拒绝添加(证明仓库不存在或不可达),成功即创建+写缓存
-    const first = await github.fetchReleases({ ...parsed, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
+    const first = await github.fetchReleases({ ...parsed, page: 1, perPage: settings.perPage, ...service.ghOpts(settings) });
     if (!first.ok) return json(res, first.status || 502, { ok: false, code: first.code, message: `无法添加: ${first.message}` });
     const r = store.createSoftware({ name: body.name || `${parsed.owner}/${parsed.repo}`, ...parsed, category: body.category, note: body.note });
     if (!r.ok) return json(res, 409, r);
@@ -120,7 +121,7 @@ async function apiSoftwareItem(req, res, id, sub, qs, github) {
     if (!item) return json(res, 404, { ok: false, code: "notfound", message: "软件不存在" });
     const page = Math.max(1, parseInt(qs.get("page") || "1", 10) || 1);
     const settings = store.getSettings();
-    const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
+    const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page, perPage: settings.perPage, ...service.ghOpts(settings) });
     if (!r.ok) return json(res, r.status || 502, r);
     // 合并去重(按 tag)
     const merged = new Map(item.cache.releases.map((x) => [x.tag, x]));
@@ -136,7 +137,7 @@ async function apiSoftwareItem(req, res, id, sub, qs, github) {
     const item = store.find(id);
     if (!item) return json(res, 404, { ok: false, code: "notfound", message: "软件不存在" });
     const settings = store.getSettings();
-    const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
+    const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page: 1, perPage: settings.perPage, ...service.ghOpts(settings) });
     if (!r.ok) return json(res, r.status || 502, r);
     item.cache = { total: r.hasMore ? null : r.releases.length, hasMore: r.hasMore, releases: r.releases };
     store.save();
@@ -245,40 +246,15 @@ export function createServer(deps = {}) {
       if (pathname === "/health") return json(res, 200, { ok: true });
       if (pathname === "/api/software" || pathname === "/api/software/") return await apiSoftware(req, res, github);
       if (pathname === "/api/settings") return await apiSettings(req, res);
-      // POST /api/check-updates — 串行检查全部软件最新 tag + 顺带刷新 star 数
+      // POST /api/check-updates — 串行检查全部软件最新 tag + 顺带刷新 star 数(逻辑在服务层)
       if (pathname === "/api/check-updates" && req.method === "POST") {
-        const settings = store.getSettings();
-        const data = store.load();
-        const hasNew = [];
-        const failed = [];
-        for (const s of data.software) {
-          const r = await github.fetchReleases({ owner: s.owner, repo: s.repo, page: 1, perPage: 1, token: settings.githubToken, proxy: settings.proxy });
-          if (r.ok && r.releases.length) {
-            const cached = s.cache?.releases?.[0]?.tag;
-            if (cached && cached !== r.releases[0].tag) hasNew.push(s.id);
-          } else {
-            failed.push({ id: s.id, name: s.name, code: r.code || "", message: r.message || "" });
-          }
-          // 顺带刷新 star + 自动简介(失败静默,不影响更新检查)
-          const info = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
-          if (info.ok) { s.stars = info.info.stars ?? null; s.desc = info.info.desc ?? s.desc; }
-        }
-        store.save();
-        return json(res, 200, { ok: true, hasNew, failed });
+        const result = await service.checkUpdates(github, store.load());
+        return json(res, 200, { ok: true, ...result });
       }
-      // POST /api/refresh-stars — 串行拉取全部仓库 star 数并缓存
+      // POST /api/refresh-stars — 串行拉取全部仓库 star 数并缓存(逻辑在服务层)
       if (pathname === "/api/refresh-stars" && req.method === "POST") {
-        const settings = store.getSettings();
-        const data = store.load();
-        let updated = 0;
-        const failed = [];
-        for (const s of data.software) {
-          const r = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
-          if (r.ok) { s.stars = r.info.stars ?? null; s.desc = r.info.desc ?? s.desc; updated++; }
-          else failed.push({ id: s.id, code: r.code, message: r.message });
-        }
-        if (updated) store.save();
-        return json(res, 200, { ok: true, updated, failed });
+        const result = await service.refreshStars(github, store.load());
+        return json(res, 200, { ok: true, ...result });
       }
       // WebDAV 云同步:/api/webdav/<config|test|upload|download|clear>
       if (pathname.startsWith("/api/webdav/")) {

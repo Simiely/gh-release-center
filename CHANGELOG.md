@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## v0.3.6 (2026-08-06)
+
+### 服务层重构（主线/支线/模块化优化落地）
+- **新增 lib/service.mjs 服务层**：checkUpdates（全量更新检查）/ refreshStars（全量 star 采集）从 server.mjs 路由内联循环抽离为独立模块——路由只做 HTTP 编排，业务组合进服务层
+- **参数组装收敛**：`service.ghOpts(settings)` 统一 token/proxy，POST/releases/refresh 3 处 fetchReleases 调用去重复
+- **测试**：新增 test/service.test.mjs（fake github 注入，不碰网络）4 例——有新版/无新版/失败三态 + star 顺带刷新 + 失败收集；**31 例全绿**
+- 真机验证：check-updates 经 service 层正常返回（遇 GitHub 限速时 failed 列表如实反馈 16 项——v0.3.5 的失败反馈功能在真实场景生效）
+
 ## v0.3.5 (2026-08-06)
 
 ### 第二轮全盘审核修复（8 项）
