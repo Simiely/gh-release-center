@@ -1,5 +1,14 @@
 # CHANGELOG.md
 
+## v0.3.1 (2026-08-06)
+
+### WebDAV 云端路径调整
+- **远端路径改为 `workbuddy/github下载/`**：上传/下载/测试均指向 `{WebDAV基地址}/workbuddy/github下载/data.json`（原为工具 id 目录）
+- **中文路径 URL 编码**：webdav.mjs 对路径段 encodeURIComponent（支持中文目录名），实测 MKCOL/PUT/GET 均正确到达编码路径
+- **测试连接建真实同步目录**：testConnection 改为在建同步目录（原空目录不发请求的 bug）
+- 新增 webdav 集成测试（本地 mock 服务器验证中文编码 + 上传/下载全链路）；**27 例全绿**
+- 真实环境验证：已配置 ddnsto WebDAV，上传成功
+
 ## v0.3.0 (2026-08-06)
 
 ### WebDAV 云同步（参考积分仪表盘 wb-credits 设计）

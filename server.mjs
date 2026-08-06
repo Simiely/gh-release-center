@@ -161,8 +161,8 @@ async function apiSettings(req, res) {
 }
 
 /** WebDAV 云同步:config 读写(密码脱敏)/test/upload/download/clear
- *  远端目录 = 工具 id 目录,数据文件 = data.json(本地 CAP_STORAGE_DIR 的完整数据) */
-const WEBDAV_DIR = "gh-release-center";
+ *  远端目录 = workbuddy/github下载/,数据文件 = data.json(本地 CAP_STORAGE_DIR 的完整数据) */
+const WEBDAV_DIR = "workbuddy/github下载";
 const DATA_FILE = () => path.join(store.storageDir(), "data.json");
 
 async function apiWebdav(req, res, action) {
@@ -181,7 +181,7 @@ async function apiWebdav(req, res, action) {
   }
   if (req.method !== "POST") return json(res, 405, { ok: false, message: "method not allowed" });
   if (action === "test") {
-    try { await webdav.testConnection(s.webdavUrl, s.webdavUser, s.webdavPass); return json(res, 200, { ok: true, message: "连接成功" }); }
+    try { await webdav.testConnection(s.webdavUrl, s.webdavUser, s.webdavPass, WEBDAV_DIR); return json(res, 200, { ok: true, message: "连接成功" }); }
     catch (e) { return json(res, 502, { ok: false, message: "连接失败: " + e.message }); }
   }
   if (action === "upload") {
