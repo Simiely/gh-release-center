@@ -64,7 +64,7 @@ async function apiSoftware(req, res, github) {
   if (req.method === "GET") {
     const list = store.load().software.map((s) => ({
       id: s.id, name: s.name, owner: s.owner, repo: s.repo,
-      category: s.category, note: s.note, createdAt: s.createdAt,
+      category: s.category, note: s.note, desc: s.desc ?? null, createdAt: s.createdAt,
       stars: s.stars ?? null,
       total: s.cache?.total ?? null,
       hasMore: !!(s.cache && s.cache.hasMore),
@@ -183,9 +183,9 @@ export function createServer(deps = {}) {
             const cached = s.cache?.releases?.[0]?.tag;
             if (cached && cached !== r.releases[0].tag) hasNew.push(s.id);
           }
-          // 顺带刷新 star(失败静默,不影响更新检查)
+          // 顺带刷新 star + 自动简介(失败静默,不影响更新检查)
           const info = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
-          if (info.ok) s.stars = info.info.stars ?? null;
+          if (info.ok) { s.stars = info.info.stars ?? null; s.desc = info.info.desc ?? s.desc; }
         }
         store.save();
         return json(res, 200, { ok: true, hasNew });
@@ -198,7 +198,7 @@ export function createServer(deps = {}) {
         const failed = [];
         for (const s of data.software) {
           const r = await github.fetchRepoInfo({ owner: s.owner, repo: s.repo, token: settings.githubToken, proxy: settings.proxy });
-          if (r.ok) { s.stars = r.info.stars ?? null; updated++; }
+          if (r.ok) { s.stars = r.info.stars ?? null; s.desc = r.info.desc ?? s.desc; updated++; }
           else failed.push({ id: s.id, code: r.code, message: r.message });
         }
         if (updated) store.save();

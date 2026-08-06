@@ -155,9 +155,9 @@ test("check-updates: 有新版时返回 id,无更新时不返回", async () => {
   src.close(); changed.close(); same.close();
 });
 
-test("refresh-stars: 拉取 star 并缓存,GET 响应带 stars", async () => {
+test("refresh-stars: 拉取 star + 自动简介并缓存,GET 响应带 stars/desc", async () => {
   const repo = `starred-${Date.now()}`;
-  const fakeRepo = async () => ({ ok: true, info: { fullName: "o/r", desc: "", private: false, stars: 42 } });
+  const fakeRepo = async () => ({ ok: true, info: { fullName: "o/r", desc: "自动简介测试", private: false, stars: 42 } });
   const src = createServer({ fetchReleases: fakeReleases, fetchRepoInfo: fakeRepo });
   await new Promise((r) => src.listen(0, "127.0.0.1", r));
   const b = `http://127.0.0.1:${src.address().port}`;
@@ -165,11 +165,14 @@ test("refresh-stars: 拉取 star 并缓存,GET 响应带 stars", async () => {
   const before = await (await fetch(b + "/api/software")).json();
   const item = before.software.find((x) => x.repo === repo);
   assert.equal(item.stars, null, "初始 stars 为 null");
+  assert.equal(item.desc, null, "初始 desc 为 null");
   const r = await (await fetch(b + "/api/refresh-stars", { method: "POST" })).json();
   assert.equal(r.ok, true);
   assert.ok(r.updated >= 1, "至少更新 1 个");
   const after = await (await fetch(b + "/api/software")).json();
-  assert.equal(after.software.find((x) => x.id === item.id).stars, 42, "stars 已缓存并返回");
+  const got = after.software.find((x) => x.id === item.id);
+  assert.equal(got.stars, 42, "stars 已缓存并返回");
+  assert.equal(got.desc, "自动简介测试", "desc 已缓存并返回");
   src.close();
 });
 

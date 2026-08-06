@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## v0.1.9 (2026-08-06)
+
+### 卡片简介双来源（自动获取 + 自定义优先）
+- **自动简介**：采集时写入 GitHub 仓库 description（check-updates / refresh-stars 顺带获取）；store 新增 desc 字段，GET /api/software 响应带 desc
+- **自定义优先**：编辑弹层「备注」留空时显示自动简介，填写自定义内容则优先显示自定义（intro() = note || desc）；清空备注即恢复自动
+- 搜索范围扩展到简介（名称/仓库/分类/简介）
+- 测试扩展：refresh-stars 用例验证 desc 一并采集
+
 ## v0.1.8 (2026-08-06)
 
 ### 排序控件优化
