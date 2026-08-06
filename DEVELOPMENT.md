@@ -55,7 +55,7 @@ server.mjs (入口薄层:静态 + API 路由)
 - 解决：增量拉取——每页 `settings.perPage` 个，前端「加载更多」→ `?page=N` 拉下一页合并入缓存；总数从 Link 头解析；「刷新」清缓存重拉第一页
 - 预防：缓存落地 data.json，重启不丢；403 时返回 code=rate_limit，UI 提示配 Token
 
-### 问题：新增软件不校验仓库存在（v0.1.1 修复）
+### 问题：新增软件校验仓库存在（v0.1.1 修复）
 
 **TL;DR**：POST 前先 fetchRepoInfo 校验，仓库不存在/网络错误直接拒绝，不再静默创建空条目。
 
@@ -64,7 +64,26 @@ server.mjs (入口薄层:静态 + API 路由)
 - 解决：`if (!info.ok) return 4xx/502 { code, message }`，前端 toast 展示"仓库校验失败: ..."
 - 预防：新增类接口必须先验证外键存在性，失败即拒绝，不给用户留"半成功"状态
 
+### 优化：POST 新增合并为一次 GitHub 请求（v0.1.2）
+
+**TL;DR**：fetchRepoInfo 校验 + fetchReleases 拉取两次请求合并为一次——拉取成功本身就证明仓库存在。
+
+- 问题：无 Token 时公共 API 限 60 次/h，每次新增占 2 个名额；且两请求间仓库可能变化（TOCTOU）
+- 根因：校验与数据获取分离的设计冗余
+- 解决：POST 直接 fetchReleases(page 1)，`!ok → 拒绝添加(透传 code/message)`，`ok → createSoftware + 写缓存`
+- 预防：能用一个请求完成"校验+取数"的就不要分两个；合并后默认名退化为 `owner/repo`（用户可改）
+
+### 优化：前端全量重建 → 局部刷新（v0.1.2）
+
+**TL;DR**：刷新/删除/加载更多统一走 `replaceCard()` 局部重建或 `card.remove()`，仅设置保存/添加走 loadAll 全量（语义上应回顶部）。
+
+- 问题：除加载更多外的操作仍 loadAll 全量重建 innerHTML，刷新/删除后滚动位置重置
+- 根因：早期统一用 loadAll 兜底，未区分"全量刷新"与"局部变更"
+- 解决：`replaceCard(card, s)` 抽取共用（记录 scrollY → replaceWith → 恢复）；删除局部 remove + 空态兜底
+- 预防：列表 DOM 变更默认局部化，只有"筛选条件变化"这类影响全部卡片的操作才全量重建
+
 ## 开发记录
 
 - 2026-08-06：项目初始化，四件套 + manifest + 骨架
 - 2026-08-06（v0.1.1）：修复加载更多 page 计算 + 增量渲染 + 新增校验仓库存在；路由精确匹配重构；补路由层单测（22 例全绿）
+- 2026-08-06（v0.1.2）：POST 新增合并为一次请求；尾部斜杠等价；刷新/删除局部化（replaceCard）；23 例全绿

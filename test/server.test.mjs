@@ -17,11 +17,10 @@ const rel = (tag, assets = []) => ({
   tag, name: tag, publishedAt: "2026-01-01T00:00:00Z", prerelease: false,
   assets: assets.map((n) => ({ name: n, size: 100, sizeText: "100 B", downloads: 0, url: "https://x/" + n, platform: "other" })),
 });
-const fakeRepoInfo = async () => ({ ok: true, info: { fullName: "owner/repo", desc: "", private: false } });
 let calls = [];
 const fakeReleases = async ({ page }) => {
   calls.push(page);
-  if (page === 999) return { ok: false, code: "not_found", message: "404", status: 404 };
+  if (page === 999) return { ok: false, code: "not_found", message: "仓库或资源不存在(404)", status: 404 };
   return {
     ok: true,
     releases: [rel(`v1.0.${page}a`), rel(`v1.0.${page}b`)],
@@ -29,7 +28,7 @@ const fakeReleases = async ({ page }) => {
   };
 };
 
-const server = createServer({ fetchReleases: fakeReleases, fetchRepoInfo: fakeRepoInfo });
+const server = createServer({ fetchReleases: fakeReleases });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}`;
 
@@ -54,10 +53,15 @@ test("GET /api/software 空列表", async () => {
   assert.deepEqual(r.data.software, []);
 });
 
-test("POST 仓库校验失败 → 拒绝添加(不静默创建)", async () => {
+test("GET /api/software/ 尾部斜杠等价", async () => {
+  const r = await req("GET", "/api/software/");
+  assert.equal(r.status, 200);
+  assert.equal(r.data.ok, true);
+});
+
+test("POST 拉取第一页失败 → 拒绝添加(不静默创建)", async () => {
   const bad = createServer({
-    fetchReleases: fakeReleases,
-    fetchRepoInfo: async () => ({ ok: false, code: "not_found", message: "仓库或资源不存在(404)", status: 404 }),
+    fetchReleases: async () => ({ ok: false, code: "not_found", message: "仓库或资源不存在(404)", status: 404 }),
   });
   await new Promise((r) => bad.listen(0, "127.0.0.1", r));
   const b = `http://127.0.0.1:${bad.address().port}`;

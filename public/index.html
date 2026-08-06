@@ -339,6 +339,21 @@ function renderCard(s) {
   </div>`;
 }
 
+/* 局部重建某张卡片(滚动位置保留),加载更多/刷新共用 */
+function replaceCard(card, s) {
+  const sy = window.scrollY;
+  const fresh = document.createElement("div");
+  fresh.innerHTML = renderCard(s).trim();
+  card.replaceWith(fresh.firstElementChild);
+  window.scrollTo(0, sy);
+}
+
+const EMPTY_HTML = `
+  <div class="empty">
+    <div class="big">📭</div>
+    <div>清单为空，点击右上角「+ 添加软件」开始收录</div>
+  </div>`;
+
 async function loadAll() {
   $("loading").style.display = "block";
   $("list").innerHTML = "";
@@ -346,11 +361,7 @@ async function loadAll() {
     const d = await api("/software");
     const listEl = $("list");
     if (!d.software.length) {
-      listEl.innerHTML = `
-        <div class="empty">
-          <div class="big">📭</div>
-          <div>清单为空，点击右上角「+ 添加软件」开始收录</div>
-        </div>`;
+      listEl.innerHTML = EMPTY_HTML;
     } else {
       softwareMap = {};
       d.software.forEach((s) => (softwareMap[s.id] = s));
@@ -370,16 +381,29 @@ $("list").addEventListener("click", async (ev) => {
   if (!id) return;
   try {
     if (t.dataset.refresh !== undefined) {
-      await api(`/software/${id}/refresh`, { method: "POST" });
-      toast("已重新拉取");
-      await loadAll();
+      const card = t.closest(".card");
+      t.disabled = true;
+      t.textContent = "…";
+      try {
+        const d = await api(`/software/${id}/refresh`, { method: "POST" });
+        const s = { ...softwareMap[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
+        softwareMap[id] = s;
+        replaceCard(card, s);
+        toast("已重新拉取");
+      } catch (e) {
+        toast(e.message, true);
+        t.disabled = false;
+        t.textContent = "↻";
+      }
     } else if (t.dataset.edit !== undefined) {
       openEdit(id);
     } else if (t.dataset.del !== undefined) {
       if (!confirm("确定删除该软件？")) return;
       await api(`/software/${id}`, { method: "DELETE" });
+      delete softwareMap[id];
+      t.closest(".card").remove();
+      if (!$("list").querySelector(".card")) $("list").innerHTML = EMPTY_HTML;
       toast("已删除");
-      await loadAll();
     } else if (t.dataset.more !== undefined) {
       const card = t.closest(".card");
       const count = parseInt(card.dataset.count || "0", 10); // 缓存 release 总数(不受过滤影响)
@@ -394,13 +418,9 @@ $("list").addEventListener("click", async (ev) => {
           t.textContent = "加载更多 ↓";
         } else {
           // 增量渲染:只重建当前卡片(滚动位置保留),其余卡片不动
-          const sy = window.scrollY;
           const s = { ...softwareMap[id], releases: d.releases, hasMore: d.hasMore, total: d.total };
           softwareMap[id] = s;
-          const fresh = document.createElement("div");
-          fresh.innerHTML = renderCard(s).trim();
-          card.replaceWith(fresh.firstElementChild);
-          window.scrollTo(0, sy);
+          replaceCard(card, s);
           toast(`已加载 ${d.releases.length} 个版本`);
         }
       } catch (e) {

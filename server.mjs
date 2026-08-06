@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as store from "./lib/store.mjs";
-import { parseRepoUrl, fetchReleases, fetchRepoInfo } from "./lib/github.mjs";
+import { parseRepoUrl, fetchReleases } from "./lib/github.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -78,18 +78,14 @@ async function apiSoftware(req, res, github) {
     const parsed = parseRepoUrl(body.repoUrl || body.repo || "");
     if (!parsed) return json(res, 400, { ok: false, code: "bad_repo", message: "无法解析仓库链接,支持 owner/repo 或 github.com 链接" });
     const settings = store.getSettings();
-    // 先校验仓库存在(404/网络错误 → 拒绝添加,不静默创建空条目)
-    const info = await github.fetchRepoInfo({ ...parsed, token: settings.githubToken, proxy: settings.proxy });
-    if (!info.ok) return json(res, info.status || 502, { ok: false, code: info.code, message: `仓库校验失败: ${info.message}` });
-    const r = store.createSoftware({ name: body.name || info.info.fullName, ...parsed, category: body.category, note: body.note });
-    if (!r.ok) return json(res, 409, r);
-    // 新增后立即拉第一页(失败不阻断,缓存留空可稍后刷新)
+    // 一次请求双重用途:拉第一页失败(404/网络/限速)即拒绝添加(证明仓库不存在或不可达),成功即创建+写缓存
     const first = await github.fetchReleases({ ...parsed, page: 1, perPage: settings.perPage, token: settings.githubToken, proxy: settings.proxy });
-    if (first.ok) {
-      r.item.cache = { total: first.hasMore ? null : first.releases.length, hasMore: first.hasMore, releases: first.releases };
-      store.save();
-    }
-    return json(res, 201, { ok: true, item: r.item, fetch: first.ok ? { hasMore: first.hasMore } : first });
+    if (!first.ok) return json(res, first.status || 502, { ok: false, code: first.code, message: `无法添加: ${first.message}` });
+    const r = store.createSoftware({ name: body.name || `${parsed.owner}/${parsed.repo}`, ...parsed, category: body.category, note: body.note });
+    if (!r.ok) return json(res, 409, r);
+    r.item.cache = { total: first.hasMore ? null : first.releases.length, hasMore: first.hasMore, releases: first.releases };
+    store.save();
+    return json(res, 201, { ok: true, item: r.item, fetch: { hasMore: first.hasMore } });
   }
   return json(res, 405, { ok: false, message: "method not allowed" });
 }
@@ -164,7 +160,6 @@ async function apiSettings(req, res) {
 export function createServer(deps = {}) {
   const github = {
     fetchReleases: deps.fetchReleases || fetchReleases,
-    fetchRepoInfo: deps.fetchRepoInfo || fetchRepoInfo,
   };
 
   return http.createServer(async (req, res) => {
@@ -173,7 +168,7 @@ export function createServer(deps = {}) {
       const { pathname, searchParams } = u;
 
       if (pathname === "/health") return json(res, 200, { ok: true });
-      if (pathname === "/api/software") return await apiSoftware(req, res, github);
+      if (pathname === "/api/software" || pathname === "/api/software/") return await apiSoftware(req, res, github);
       if (pathname === "/api/settings") return await apiSettings(req, res);
       // 精确分段:/api/software/<id>[/releases|/refresh]
       const PREFIX = "/api/software/";
