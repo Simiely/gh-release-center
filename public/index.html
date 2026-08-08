@@ -142,7 +142,7 @@
   .mfoot{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}
 
   /* ---------- 其他 ---------- */
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:9px 16px;border-radius:10px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;white-space:nowrap}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:9px 16px;border-radius:10px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;white-space:normal;word-break:break-word;line-height:1.55;text-align:left}
   .toast.show{opacity:1}
   .toast.err{border-color:var(--red);color:var(--red)}
 </style>
@@ -271,7 +271,9 @@ function toast(msg, isErr) {
   t.className = "toast" + (isErr ? " err" : "");
   t.style.opacity = "1";
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.style.opacity = "0"), 2600);
+  // 显示时间按内容长度自适应:每字符约 60ms,最少 3 秒,最长 15 秒(防卡住)
+  const ms = Math.min(15000, Math.max(3000, String(msg).length * 60));
+  toastTimer = setTimeout(() => (t.style.opacity = "0"), ms);
 }
 
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
