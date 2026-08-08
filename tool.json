@@ -6,11 +6,7 @@
   "icon": "📥",
   "type": "app",
   "version": "0.5.8",
-  "runtime": "node",
-  "capabilities": [
-    "storage"
-  ],
-  "entry": "server.mjs",
+  "cmd": ["node", "server.mjs", "8130"],
   "port": 8130,
   "health": "/health",
   "dataFiles": []

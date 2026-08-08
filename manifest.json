@@ -4,7 +4,6 @@
   "desc": "集中管理 GitHub 仓库的 Release 下载：推送日期/新版跟踪 + 批量添加 + WebDAV 一键同步",
   "group": "工具",
   "icon": "📥",
-  "type": "app",
   "version": "0.5.8",
   "runtime": "node",
   "capabilities": [
