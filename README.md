@@ -78,6 +78,14 @@ node server.mjs 8130
 
 脱离平台时数据落在 `./.data/`，`__BASE__` 为空，功能完整可用。
 
+## 能力声明（manifest.json）
+
+**`capabilities: ["storage"]` 是什么意思**
+
+- 向平台申请**独立数据目录**：工具数据（软件清单/缓存 `data.json`）写入平台数据区 `data/tools/gh-release-center/`，通过环境变量 `CAP_STORAGE_DIR` 注入——**升级工具不丢数据**，平台存储管理可识别/备份
+- 平台顶部按能力聚合筛选 Tab（如「💾 存储」）：tools-center v0.12.5 起**单能力自动隐藏**（能力是环境需求不是业务分类，只有一种能力时顶部不显示，避免与「全部」冗余）；工具卡片/详情的能力徽标始终显示
+- **storage vs `dataFiles`**：`capabilities:["storage"]` = 数据放平台数据区、平台兜底；`dataFiles` = 数据留在工具目录、按 glob 识别保护（升级保留，如 wb-credits 的 `*.db` / `data/**`）。有持久化数据的工具二选一即可，本工具选 storage
+
 ## 文档
 
 - [开发文档 DEVELOPMENT.md](DEVELOPMENT.md) — 架构说明与关键问题记录
