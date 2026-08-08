@@ -349,7 +349,13 @@ async function checkUpdates() {
     const parts = [];
     if (d.hasNew?.length) parts.push(`发现 ${d.hasNew.length} 个软件有新版`);
     else parts.push("全部是最新版本");
-    if (d.failed?.length) parts.push(`${d.failed.length} 个检查失败(${d.failed.map((f) => f.name).join("、")})`);
+    if (d.failed?.length) {
+      parts.push(`${d.failed.length} 个检查失败(${d.failed.map((f) => f.name).join("、")})`);
+      // 显示首个失败的具体原因(code+message),便于排查:network/rate_limit/not_found…
+      const f0 = d.failed[0];
+      const reason = [f0.code, f0.message].filter(Boolean).join(": ");
+      if (reason) parts.push(`首个失败: ${reason}`);
+    }
     toast(parts.join("；"));
   } catch (e) { toast(e.message, true); }
   finally { state.checking = false; btn.disabled = false; btn.textContent = "全部刷新"; }
