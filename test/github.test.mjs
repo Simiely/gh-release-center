@@ -1,7 +1,7 @@
 // test/github.test.mjs — lib/github.mjs 纯函数单测
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseRepoUrl, detectPlatform, normalizeRelease } from "../lib/github.mjs";
+import { parseRepoUrl, detectPlatform, normalizeRelease, sortReleasesByPublish } from "../lib/github.mjs";
 
 test("parseRepoUrl: owner/repo", () => {
   assert.deepEqual(parseRepoUrl("Simiely/tools-center"), { owner: "Simiely", repo: "tools-center" });
@@ -60,6 +60,7 @@ test("normalizeRelease: 资产字段归一化", () => {
     tag_name: "v1.0.0",
     name: "v1.0.0",
     published_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-02T00:00:00Z",
     prerelease: false,
     assets: [
       { name: "app.exe", size: 1048576, download_count: 10, browser_download_url: "https://x/app.exe" },
@@ -70,4 +71,25 @@ test("normalizeRelease: 资产字段归一化", () => {
   assert.equal(r.assets[0].platform, "win");
   assert.equal(r.assets[0].sizeText, "1.0 MB");
   assert.equal(r.assets[0].downloads, 10);
+  assert.equal(r.updatedAt, "2026-01-02T00:00:00Z", "采集 updated_at(资产重传检测用)");
+});
+
+test("normalizeRelease: 缺 updated_at 时退化为 published_at", () => {
+  const r = normalizeRelease({ tag_name: "v1", published_at: "2026-01-01T00:00:00Z" });
+  assert.equal(r.updatedAt, "2026-01-01T00:00:00Z");
+});
+
+test("sortReleasesByPublish: 乱序输入按发布时间降序(GitHub 列表不保证顺序)", () => {
+  const rs = [
+    { tag: "v1.5", publishedAt: "2026-01-20T00:00:00Z" },
+    { tag: "v1.0", publishedAt: "2026-01-02T00:00:00Z" },
+    { tag: "v2.0", publishedAt: "2026-02-01T00:00:00Z" },
+  ];
+  assert.deepEqual(sortReleasesByPublish(rs).map((r) => r.tag), ["v2.0", "v1.5", "v1.0"]);
+});
+
+test("sortReleasesByPublish: 不修改原数组", () => {
+  const rs = [{ tag: "v2", publishedAt: "2026-02-01T00:00:00Z" }, { tag: "v1", publishedAt: "2026-01-01T00:00:00Z" }];
+  sortReleasesByPublish(rs);
+  assert.equal(rs[0].tag, "v2", "原数组顺序不变");
 });

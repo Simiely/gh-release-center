@@ -7,8 +7,9 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as store from "./lib/store.mjs";
-import { parseRepoUrl, fetchReleases, fetchRepoInfo } from "./lib/github.mjs";
+import { parseRepoUrl, fetchReleases, fetchRepoInfo, fetchReposBatch } from "./lib/github.mjs";
 import * as webdav from "./lib/webdav.mjs";
+import { normalizeUrl } from "./lib/webdav.mjs";
 import * as service from "./lib/service.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -64,17 +65,70 @@ function serveStatic(req, res, urlPath) {
 }
 
 // ---- API ----
+// 懒补采节流:每个仓库 10 分钟内只补采一次(服务重启后重置,可接受)
+const pushedFetchAt = new Map();
+const BACKFILL_TTL = 10 * 60 * 1000;
+
+/** 后台补齐缺失的推送日期(pushedAt)/Star/简介——GitHub 仓库必然有 pushed_at,不显示=采集缺失。
+ *  有 token → GraphQL 一次批量查全部;无 token → REST 并行逐个。失败删除节流标记,允许前端轮询重试。
+ *  fire-and-forget:不阻塞响应;成功才写盘 */
+function lazyBackfillPushed(github, data) {
+  const settings = store.getSettings();
+  const now = Date.now();
+  const missing = data.software.filter(
+    (s) => !s.pushedAt && now - (pushedFetchAt.get(s.owner + "/" + s.repo) || 0) > BACKFILL_TTL
+  );
+  if (!missing.length) return;
+  missing.forEach((s) => pushedFetchAt.set(s.owner + "/" + s.repo, now));
+  const keyOf = (s) => s.owner + "/" + s.repo;
+  (async () => {
+    let changed = false;
+    const apply = (s, info) => {
+      if (!info || !info.pushedAt) return;
+      s.pushedAt = info.pushedAt;
+      s.stars = info.stars ?? s.stars;
+      s.desc = info.desc ?? s.desc;
+      changed = true;
+    };
+    if (settings.githubToken) {
+      // GraphQL 批量:一次请求全部缺失仓库
+      const r = await github.fetchReposBatch({ repos: missing.map((s) => ({ owner: s.owner, repo: s.repo })), token: settings.githubToken, proxy: settings.proxy });
+      if (r.ok) {
+        missing.forEach((s) => apply(s, r.repos[keyOf(s)]));
+      } else {
+        missing.forEach((s) => pushedFetchAt.delete(keyOf(s))); // 失败:允许重试
+      }
+    } else {
+      // 无 token:REST 并行逐个
+      const results = await Promise.allSettled(
+        missing.map((s) => github.fetchRepoInfo({ owner: s.owner, repo: s.repo, ...service.ghOpts(settings) }))
+      );
+      results.forEach((res, i) => {
+        if (res.status === "fulfilled" && res.value.ok && !res.value.notModified) {
+          apply(missing[i], res.value.info);
+        } else {
+          pushedFetchAt.delete(keyOf(missing[i])); // 失败:允许重试
+        }
+      });
+    }
+    if (changed) { try { store.save(); } catch {} }
+  })();
+}
+
 async function apiSoftware(req, res, github) {
   // GET /api/software — 返回含缓存 releases(本地已拉取的部分),前端免网络直接渲染
   if (req.method === "GET") {
-    const list = store.load().software.map((s) => ({
+    const data = store.load();
+    // 懒补采:推送日期缺失的软件后台自动补齐(GitHub 可达时,无需手动刷新)
+    lazyBackfillPushed(github, data);
+    const list = data.software.map((s) => ({
       id: s.id, name: s.name, owner: s.owner, repo: s.repo,
       category: s.category, note: s.note, desc: s.desc ?? null, createdAt: s.createdAt,
       pushedAt: s.pushedAt ?? null,
       stars: s.stars ?? null,
       total: s.cache?.total ?? null,
       hasMore: !!(s.cache && s.cache.hasMore),
-      releases: s.cache?.releases ?? [],
+      releases: Array.isArray(s.cache?.releases) ? s.cache.releases : [],
     }));
     return json(res, 200, { ok: true, software: list });
   }
@@ -91,6 +145,14 @@ async function apiSoftware(req, res, github) {
     const r = store.createSoftware({ name: body.name || `${parsed.owner}/${parsed.repo}`, ...parsed, category: body.category, note: body.note });
     if (!r.ok) return json(res, 409, r);
     r.item.cache = { total: first.hasMore ? null : first.releases.length, hasMore: first.hasMore, releases: first.releases };
+    // 顺带采集推送时间(pushedAt)/Star/简介——新添加的软件卡片立刻显示"推送日期"而非添加时间(失败静默,不阻塞添加)
+    const info = await github.fetchRepoInfo({ ...parsed, ...service.ghOpts(settings) });
+    if (info.ok && !info.notModified) {
+      r.item.pushedAt = info.info.pushedAt ?? null;
+      r.item.stars = info.info.stars ?? null;
+      r.item.desc = info.info.desc ?? r.item.desc;
+      if (info.meta?.etag) r.item.repoEtag = info.meta.etag;
+    }
     store.save();
     return json(res, 201, { ok: true, item: r.item, fetch: { hasMore: first.hasMore } });
   }
@@ -124,10 +186,10 @@ async function apiSoftwareItem(req, res, id, sub, qs, github) {
     const settings = store.getSettings();
     const r = await github.fetchReleases({ owner: item.owner, repo: item.repo, page, perPage: settings.perPage, ...service.ghOpts(settings) });
     if (!r.ok) return json(res, r.status || 502, r);
-    // 合并去重(按 tag)
+    // 合并去重(按 tag),再按发布时间降序——防止新版本被追加到队尾导致 LATEST 主卡仍是旧版
     const merged = new Map(item.cache.releases.map((x) => [x.tag, x]));
     for (const rel of r.releases) merged.set(rel.tag, rel);
-    const releases = [...merged.values()];
+    const releases = [...merged.values()].sort((a, b) => (b.publishedAt || "").localeCompare(a.publishedAt || ""));
     item.cache.releases = releases;
     item.cache.hasMore = r.hasMore;
     item.cache.total = r.hasMore ? null : releases.length;
@@ -156,6 +218,7 @@ async function apiSettings(req, res) {
     delete s.webdavPass;
     s.githubTokenHas = !!s.githubToken;
     delete s.githubToken;
+    s.defaultUrl = webdav.DEFAULT_WEBDAV_URL; // 前端"地址留空用默认"提示与回填判断
     return json(res, 200, { ok: true, settings: s });
   }
   if (req.method === "PUT") {
@@ -175,23 +238,100 @@ async function apiSettings(req, res) {
   return json(res, 405, { ok: false, message: "method not allowed" });
 }
 
-/** WebDAV 云同步:config 读写(密码脱敏)/test/upload/download/clear
- *  远端目录 = workbuddy/github下载/,数据文件 = data.json(本地 CAP_STORAGE_DIR 的完整数据)
- *  默认地址 = 积分仪表盘同款(192 内网),设置里不填地址时自动使用 */
+/** WebDAV 云同步:config(脱敏)/test/push/pull/sync/clear
+ *  交互范式参考 edge-multi-account-cookie:
+ *   - test 用表单值(留空回退已保存),前端"测试成功即自动保存"
+ *   - 远端多版本时间戳备份 + 保留最近 1 份;pull 自动选最新可用备份
+ *   - sync = 先拉最新备份 smart 合并进本地(只增不删)→ 上传合并后全量;首次同步只传
+ *   - pull 覆盖前本地 .bak 兜底;结构校验拒绝损坏数据 */
 const WEBDAV_DIR = "workbuddy/github下载";
-const DEFAULT_WEBDAV_URL = "http://192.168.2.1:6086/";
-const wdUrl = (s) => String(s.webdavUrl || "").trim() || DEFAULT_WEBDAV_URL;
 const DATA_FILE = () => path.join(store.storageDir(), "data.json");
 
-async function apiWebdav(req, res, action) {
+/** 组装有效配置:表单值优先,留空回退已保存(密码留空=保留已存密码) */
+function wdCfg(s, body = {}) {
+  const url = normalizeUrl(body.url ?? s.webdavUrl);
+  const user = String(body.user ?? s.webdavUser ?? "").trim();
+  const pass = body.pass !== undefined && String(body.pass) !== "" ? String(body.pass) : (s.webdavPass || "");
+  return { url, user, pass };
+}
+
+/** 已保存配置(用于 push/pull/sync,凭据来自设置) */
+function wdSaved(s) {
+  return { url: normalizeUrl(s.webdavUrl), user: String(s.webdavUser || "").trim(), pass: s.webdavPass || "" };
+}
+
+function requireWd(cfg) {
+  if (!cfg.user || !cfg.pass) throw new Error("请先配置 WebDAV（含用户名与密码）");
+  return cfg;
+}
+
+/** 数据"新鲜度":最新 release 发布时间 → 仓库推送时间 → 本地创建时间,谁大谁新 */
+function freshnessOf(s) {
+  const relTimes = (s.cache?.releases || [])
+    .map((r) => Date.parse(r.publishedAt || ""))
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a);
+  if (relTimes.length) return relTimes[0];
+  const p = Date.parse(s.pushedAt || "");
+  if (Number.isFinite(p)) return p;
+  return s.createdAt || 0;
+}
+
+/** 远端条目规范化(补全字段,防御旧格式/手改数据) */
+function ensureItem(r) {
+  return {
+    id: r.id || store.newId(),
+    name: r.name || `${r.owner}/${r.repo}`,
+    owner: r.owner,
+    repo: r.repo,
+    category: (r.category || "未分类").trim(),
+    note: (r.note || "").trim(),
+    pushedAt: r.pushedAt ?? null,
+    desc: r.desc ?? null,
+    createdAt: r.createdAt || Date.now(),
+    stars: r.stars ?? null,
+    etag: r.etag ?? null,
+    repoEtag: r.repoEtag ?? null,
+    cache: r.cache && Array.isArray(r.cache.releases) ? r.cache : { total: null, releases: [] },
+  };
+}
+
+/** 只增不删 smart 合并:远端独有 → 新增;同名(owner+repo)取更"新鲜"一份;本地独有保留 */
+function mergeRemote(data, remote) {
+  let imported = 0;
+  let updated = 0;
+  let kept = 0;
+  for (const r of remote) {
+    if (!r || !r.owner || !r.repo) continue;
+    const local = data.software.find((x) => x.owner === r.owner && x.repo === r.repo);
+    if (!local) {
+      data.software.unshift(ensureItem(r));
+      imported++;
+    } else if (freshnessOf(r) > freshnessOf(local)) {
+      const { id, createdAt } = local;
+      Object.assign(local, ensureItem(r));
+      local.id = id;
+      local.createdAt = createdAt;
+      updated++;
+    } else {
+      kept++;
+    }
+  }
+  if (imported || updated) store.save();
+  return { imported, updated, kept };
+}
+
+async function apiWebdav(req, res, action, wd) {
   const s = store.getSettings();
   if (action === "config" && req.method === "GET") {
-    return json(res, 200, { ok: true, url: s.webdavUrl, user: s.webdavUser, has: !!s.webdavPass, defaultUrl: DEFAULT_WEBDAV_URL });
+    return json(res, 200, { ok: true, url: s.webdavUrl, user: s.webdavUser, has: !!s.webdavPass, defaultUrl: webdav.DEFAULT_WEBDAV_URL });
   }
   if (action === "config" && req.method === "POST") {
     let body;
     try { body = await readBody(req); } catch (e) { return json(res, 400, { ok: false, message: e.message }); }
     const patch = { webdavUrl: String(body.url || "").trim(), webdavUser: String(body.user || "").trim() };
+    if (patch.webdavUrl && !webdav.isValidUrl(patch.webdavUrl))
+      return json(res, 400, { ok: false, code: "wd_bad_url", message: "URL 格式不正确（需 http/https）" });
     // 密码:显式传非空 → 更新;传空且已有密码 → 保留;传空且无密码 → 保持空
     if (body.pass !== undefined && String(body.pass) !== "") patch.webdavPass = String(body.pass);
     const r = store.updateSettings(patch);
@@ -199,30 +339,67 @@ async function apiWebdav(req, res, action) {
   }
   if (req.method !== "POST") return json(res, 405, { ok: false, message: "method not allowed" });
   if (action === "test") {
-    try { await webdav.testConnection(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR); return json(res, 200, { ok: true, message: "连接成功" }); }
-    catch (e) { return json(res, 502, { ok: false, message: "连接失败: " + e.message }); }
-  }
-  if (action === "upload") {
+    let body = {};
+    try { body = await readBody(req); } catch { body = {}; }
+    const cfg = wdCfg(s, body);
+    if (!cfg.user || !cfg.pass) return json(res, 400, { ok: false, code: "wd_need_cred", message: "请填写用户名与密码" });
+    if (!webdav.isValidUrl(cfg.url)) return json(res, 400, { ok: false, code: "wd_bad_url", message: "URL 格式不正确（需 http/https）" });
     try {
-      await webdav.uploadFile(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json", JSON.stringify(store.load(), null, 2));
-      return json(res, 200, { ok: true, message: "已上传到云端" });
-    } catch (e) { return json(res, 502, { ok: false, message: "上传失败: " + e.message }); }
+      const r = await wd.testConnection(cfg.url, cfg.user, cfg.pass, WEBDAV_DIR);
+      return json(res, 200, { ok: true, count: r.count, message: `连接成功（检测到 ${r.count} 个项目）` });
+    } catch (e) {
+      return json(res, 502, { ok: false, message: "连接失败: " + e.message });
+    }
   }
-  if (action === "download") {
+  if (action === "push") {
     try {
-      const text = await webdav.downloadFile(wdUrl(s), s.webdavUser, s.webdavPass, WEBDAV_DIR, "data.json");
-      if (text === null) return json(res, 404, { ok: false, message: "云端没有数据文件,请先上传" });
+      const cfg = requireWd(wdSaved(s));
+      const { filename } = await wd.pushBackup(cfg.url, cfg.user, cfg.pass, WEBDAV_DIR, JSON.stringify(store.load(), null, 2));
+      return json(res, 200, { ok: true, filename, message: `已上传备份「${filename}」到云端` });
+    } catch (e) {
+      return json(res, 502, { ok: false, message: "上传失败: " + e.message });
+    }
+  }
+  if (action === "pull") {
+    try {
+      const cfg = requireWd(wdSaved(s));
+      const { filename, content } = await wd.pullLatest(cfg.url, cfg.user, cfg.pass, WEBDAV_DIR);
       // 结构校验:必须是 {software:[...]} 合法清单,防损坏数据静默覆盖
       let parsed;
-      try { parsed = JSON.parse(text); } catch { return json(res, 502, { ok: false, message: "云端数据不是合法 JSON,已拒绝覆盖" }); }
-      if (!Array.isArray(parsed.software)) return json(res, 502, { ok: false, message: "云端数据结构无效(缺 software 数组),已拒绝覆盖" });
+      try { parsed = JSON.parse(content); } catch { return json(res, 502, { ok: false, message: "远端数据不是合法 JSON,已拒绝覆盖" }); }
+      if (!Array.isArray(parsed.software)) return json(res, 502, { ok: false, message: "远端数据结构无效(缺 software 数组),已拒绝覆盖" });
       const file = DATA_FILE();
       const bak = file + ".bak-" + Date.now();
       try { fs.copyFileSync(file, bak); } catch {}
-      fs.writeFileSync(file, text);
+      fs.writeFileSync(file, content);
       store.resetCache();
-      return json(res, 200, { ok: true, message: "已从云端恢复(本地已备份)" });
-    } catch (e) { return json(res, 502, { ok: false, message: "下载失败: " + e.message }); }
+      return json(res, 200, { ok: true, filename, message: `已从「${filename}」恢复(本地已备份)` });
+    } catch (e) {
+      return json(res, 502, { ok: false, message: "下载失败: " + e.message });
+    }
+  }
+  if (action === "sync") {
+    try {
+      const cfg = requireWd(wdSaved(s));
+      const result = { pulled: null, pushed: null };
+      // 第一步:拉远端最新备份 → smart 合并进本地(只增不删)
+      try {
+        const { filename, content } = await wd.pullLatest(cfg.url, cfg.user, cfg.pass, WEBDAV_DIR);
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed.software)) throw new Error("远端数据结构无效(缺 software 数组)");
+        const m = mergeRemote(store.load(), parsed.software);
+        result.pulled = { filename, ...m };
+      } catch (e) {
+        if (e && e.message && e.message.includes("远端没有备份文件")) result.pulled = null; // 首次同步:只上传
+        else throw e;
+      }
+      // 第二步:导出合并后的本地全量上传新备份(保留策略自动清理旧文件)
+      const { filename } = await wd.pushBackup(cfg.url, cfg.user, cfg.pass, WEBDAV_DIR, JSON.stringify(store.load(), null, 2));
+      result.pushed = { filename };
+      return json(res, 200, { ok: true, ...result });
+    } catch (e) {
+      return json(res, 502, { ok: false, message: "同步失败: " + e.message });
+    }
   }
   if (action === "clear") {
     store.updateSettings({ webdavUrl: "", webdavUser: "", webdavPass: "" });
@@ -232,12 +409,14 @@ async function apiWebdav(req, res, action) {
 }
 
 // ---- 路由 ----
-/** 创建 HTTP 服务。deps 用于测试注入 fake 的 GitHub 客户端;默认用真实实现 */
+/** 创建 HTTP 服务。deps 用于测试注入 fake 的 GitHub/WebDAV 客户端;默认用真实实现 */
 export function createServer(deps = {}) {
   const github = {
     fetchReleases: deps.fetchReleases || fetchReleases,
     fetchRepoInfo: deps.fetchRepoInfo || fetchRepoInfo,
+    fetchReposBatch: deps.fetchReposBatch || fetchReposBatch,
   };
+  const wd = deps.webdav || webdav;
 
   return http.createServer(async (req, res) => {
     try {
@@ -257,10 +436,10 @@ export function createServer(deps = {}) {
         const result = await service.refreshStars(github, store.load());
         return json(res, 200, { ok: true, ...result });
       }
-      // WebDAV 云同步:/api/webdav/<config|test|upload|download|clear>
+      // WebDAV 云同步:/api/webdav/<config|test|push|pull|sync|clear>
       if (pathname.startsWith("/api/webdav/")) {
         const action = pathname.slice("/api/webdav/".length);
-        return await apiWebdav(req, res, action);
+        return await apiWebdav(req, res, action, wd);
       }
       // 精确分段:/api/software/<id>[/releases|/refresh]
       const PREFIX = "/api/software/";

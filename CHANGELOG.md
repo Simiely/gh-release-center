@@ -1,5 +1,100 @@
 # CHANGELOG.md
 
+## v0.5.8 (2026-08-08)
+
+### 采集方案升级(GraphQL 批量) + 搜索框禁用浏览器自动填充
+- 🔴 **懒补采升级为 GraphQL 批量**(搜索 GitHub 最佳实践):有 token 时一次 GraphQL 请求查最多 50 个缺失仓库的 `pushedAt/stargazerCount/description`(aliases 写法,官方/社区推荐,大幅省额度——无 token 时退化 REST 并行逐个);失败删除节流标记,允许前端轮询重试
+- 🟡 **前端待采集自动轮询**:页面存在"推送日期待采集"时自动定时重拉(4s/8s/12s/16s,最多 4 次),补齐后自动刷新显示,无需手动刷新;GitHub 不可达时安静放弃
+- 🟡 **禁用浏览器自动填充**:搜索框 `#q` 加 `autocomplete="off"`(此前浏览器自动填入历史词 → 排序时被过滤显示"空白");全部输入框统一加 `autocomplete`(密码框 `new-password` 防保存/自动填)
+- 🟢 测试:新增 GraphQL 批量懒补采用例;修复"设置读写"测试残留 token 污染(懒补采分支选择依赖 token)→ **53 例全绿**
+
+## v0.5.7 (2026-08-08)
+
+### 修复 WebDAV 同步崩溃(沙箱 safe-delete 拦截删除文件 → 同步报错)
+- 🔴 **根因**:`store.save()` 原子写失败后执行 `fs.rmSync(data.json)`——沙箱的"安全删除"机制拦截该操作并把文件重定向到 `C:\Temp\codebuddy-safe-delete-bulk\`,重定向过程 EPERM 失败,抛 `SAFE_DELETE_BULK_GUARD_ERROR`,导致一键同步接口直接报错(本地写盘问题殃及云同步)
+- 🔴 **修复**:`store.save()` 改为尽力而为、永不抛错——降级链:直接写 → tmp+rename → **copyFile 覆盖(不删除目标)** → 最后才删目标+rename(失败静默);任何失败都不让接口崩溃(数据已在内存,下次 save 再落盘)
+- 🟢 **验证**:mock WebDAV 下 sync 全链路成功;用户真实配置(ddnsto + billpotter)只读 test 连接成功(检测到 3 个备份);52 例测试全绿
+- 排查附注:修复期间沙箱测试覆盖过用户 WebDAV 配置,已从本地 .bak 备份恢复(url/账号/密码)
+
+## v0.5.6 (2026-08-08)
+
+### 推送日期保证每个项目都有(懒补采 + dirty 修复 + 待采集提示)
+- 🔴 **懒补采**:`GET /api/software` 对推送日期缺失的软件后台自动补齐(`fetchRepoInfo`,10 分钟节流,失败静默不阻塞响应)——GitHub 仓库必然有 `pushed_at`,不显示 = 采集缺失(旧数据/云端同步数据/添加时请求失败);GitHub 可达时打开页面即自动补齐,无需手动刷新
+- 🔴 **dirty bug 修复**:`checkUpdates` 更新 pushedAt/stars/desc 但响应无 etag 时 `dirty` 不置位 → 更新不落盘;现只要更新即落盘
+- 🟡 **前端语义统一**:卡片日期只显示推送日期(去掉 release 发布兜底,与 v0.5.3 推送日期语义一致);无推送日期时显示「推送日期待采集」(弱化提示)而非空白;排序同样只用推送日期
+- 测试:新增懒补采用例(缺失→GET→自动补齐),**52 例全绿**
+
+## v0.5.5 (2026-08-08)
+
+### 可访问性修复:表单控件关联 label(Lighthouse "No label associated with a form field")
+- 12 个表单控件此前全部无 label 关联(11 个 `<label>` 缺 `for` + 搜索框无 label)——现 11 个 label 补 `for`(fName/fRepo/fCat/fNote/fBatch/fToken/fProxy/fPerPage/fWdUrl/fWdUser/fWdPass),搜索框 `#q` 加 `aria-label="搜索软件"`
+- 「WebDAV 云同步」区块标题由 `<label>` 改为 `<div>`(非表单字段,语义正确)
+- 验证:DOM 扫描 12/12 全部关联,Edge 渲染正常、无 JS 错误
+
+## v0.5.4 (2026-08-08)
+
+### 全面操作排查:渲染容错加固 + 字段兜底(针对"点排序空白"报告)
+- 🔴 **渲染单卡片容错**:`render()` 对每条软件 try/catch——某条数据异常只跳过该卡,不再让整页 grid 空白(用户报告"点击推送日期就空白"的最可能防御点)
+- 🟡 **releases 数组兜底**:`GET /api/software` 对 `cache.releases` 非数组(旧数据/手改)返回 [] 而非透传;前端 `platOf`/`openDetail` 同步加 Array.isArray 兜底(此前非数组会致 flatMap 崩溃、整页挂)
+- 🟢 **apiSettings 补 defaultUrl**:前端"地址留空用默认"的回填判断与提示此前拿到 undefined,现服务端返回
+- **排查过程**:CDP 驱动全部交互(排序×3/升降序/搜索/分类Tab/平台筛选/卡片详情/复制/刷新/编辑/删除/显示更早/添加校验/批量/设置/全部刷新),覆盖完整新格式、旧格式(缺 etag/updatedAt/sizeText)、无 cache、空名称、无效日期、无资产、releases 非数组、assets null 等脏数据——全部无 JS 异常;51 例测试全绿
+
+## v0.5.3 (2026-08-08)
+
+### 卡片日期 = 仓库推送日期(pushedAt,最后一次推到 GitHub),修正 v0.5.2 误解
+- 🔴 **语义修正**:用户澄清"推送日期"= 仓库最后一次推送到 GitHub 的时间(`pushed_at`),不是 release 发布时间——卡片/排序恢复 pushedAt 优先:有 pushedAt 显示「推送 xxx」,未采集才退化为最新 release 发布时间「发布 xxx」,都无则不显示;排序按钮改回「按推送日期」
+- 🟡 **添加时即采集推送日期**:POST /api/software 此前只拉 releases、不采集仓库信息 → 新添加软件 pushedAt=null 显示成添加时间(用户看到"有些显示添加日期"的根因);现添加时顺带 fetchRepoInfo 采集 pushedAt/stars/desc(失败静默不阻塞添加)
+- 🟢 存量数据:点一次「全部刷新」即补齐推送日期(checkUpdates 已顺带采集)
+- 测试:POST 添加采集断言 + refresh-stars 初始值断言随行为更新,**51 例全绿**;Edge 渲染验证「推送/发布」标签、排序(推送优先、兜底发布、无日期最后)
+
+## v0.5.2 (2026-08-08)
+
+### 卡片日期统一为「发布日期」+ 排序改为独立按钮
+- 🔴 **日期统一**:卡片时间一律取最新 release 发布时间(publishedAt),不再退化到仓库推送/添加时间;无 release 的软件不显示时间(避免"添加日期"误导);排序同样只用发布日期,无 release 排最后
+- 🔴 **排序方向 bug 修复**:`cmpSort` 的日期/Star 分支方向一直写反(`(db-da)` → `(da-db)`),默认降序实际把旧版本排前面——本次一并修正,并验证 date desc/asc、stars desc 全方向正确
+- 🟡 **排序控件改独立按钮**:右上角下拉 `<select>` → 「按发布日期 / 按 Star / 按名称」三个按钮直接点击切换,选中态高亮(与分类 Tab 同款粉色);升降序切换按钮保留
+- 验证:Edge headless 渲染确认卡片按日期降序(t1→t2→t3,无 release 最后)、无 JS 错误;51 例测试全绿
+
+## v0.5.1 (2026-08-08)
+
+### 修复「全部刷新」500 EPERM(Windows 写盘) + 端到端验证
+- 🔴 **store.save 原子写加固**:Windows 上 rename 覆盖已有文件可能 EPERM(直接写被锁时回退路径)→ 先删目标再 rename;失败时确保清理 tmp 残留
+- 🟡 **checkUpdates/refreshStars 仅在有数据变更时写盘**(dirty 标记):全仓库检查失败(GitHub 不通/限速)时不再无谓写盘,避免触发写锁
+- 🟡 **写盘失败降级**:checkUpdates/refreshStars 的 save 失败不再让整个接口 500,结果照常返回
+- 🟢 **端到端验证**(本地 mock WebDAV + Basic Auth):测试保存(表单值)/配置保存/首次同步只传/合并同步(本地独有保留)/远端保留 1 份/双端一致合并 全链路通过;check-updates 在 GitHub 不可达时返回 failed 列表而非 500
+
+## v0.5.0 (2026-08-08)
+
+### WebDAV 交互重构(范式对齐 edge-multi-account-cookie)
+- 🔴 **「测试保存」合一**:原「保存配置/测试/上传/下载/清空」5 按钮 → 「测试保存/一键同步/清除配置」——测试连接成功即自动保存配置,失败不保存;输入框回车 = 触发测试保存
+- 🔴 **一键同步(sync)= 先拉后传双向收敛**:拉远端最新备份 → 按 owner+repo smart 合并进本地(**只增不删**,同名取数据更"新鲜"的一份,本地独有保留) → 上传合并后全量;远端无备份(首次同步)自动只传首份;响应带拉取/新增/更新/上传明细
+- 🟡 **远端多版本备份 + 保留策略**:备份文件名 `ghrc-backup-YYYYMMDDHHMMSS.json`(UTC 定宽时间戳),上传后只保留最近 1 份(自动 DELETE 旧文件);下载自动选"最新且可用"备份,损坏文件跳过,兼容旧版 data.json
+- 🟡 **协议层补齐**:PROPFIND(Depth:0 探测目录/Depth:1 列目录解析 href)+ DELETE;401/403 统一归一为"认证失败,请检查用户名/密码";URL 格式校验(需 http/https)
+- 🟡 **test 用表单值**:修复此前「测试」按钮实际只测已保存配置、表单编辑无效的交互 bug(留空回退已保存凭据)
+- 🟢 **安全保留**:pull 覆盖前本地 .bak 兜底 + 结构校验(software 数组)拒绝损坏数据;密码仍留空即保留
+- 测试:+6 协议用例 +5 路由用例,**51 例全绿**(修复:mock server 复用 listen 挂起、after 未 import 导致 runner 挂起)
+
+## v0.4.1 (2026-08-08)
+
+### 修复「最新版 / 更新日期」取错(GitHub 列表不保证顺序)
+- 🔴 **根因**:`GET /releases` 列表不保证按发布时间排序(受 tag commit 日期 / SemVer / make_latest 影响,官方文档明确建议不要依赖返回顺序);此前取 `releases[0]` 当最新版,遇到乱序会取到旧版本,日期跟着错
+- 🔴 **修复**:新增 `sortReleasesByPublish`(按 published_at 降序),`fetchReleases` 返回前统一排序——POST 添加 / 单条刷新 / 加载更多 / 更新检测全部拿到正确的"最新在前"
+- 🟡 **检测窗口放大**:checkUpdates 从 per_page=1 提到 per_page=5,再按发布时间取最新(per_page=1 遇乱序会漏掉真正最新发布);服务层对上游结果二次排序兜底
+- 🟢 **字段语义确认**(搜索官方文档):GitHub UI 的 "X hours ago" 基于 `published_at`(发布时间);`created_at` 是草稿创建时间;`updated_at` 是最后编辑/资产更新;`pushed_at` 是仓库 push,与版本无关——卡片日期 = 最新 release 的 published_at,无 release 才退化 pushedAt/createdAt
+- 测试新增 3 例(sortReleasesByPublish 乱序/不可变 + checkUpdates 乱序兜底),**41 例全绿**
+
+## v0.4.0 (2026-08-08)
+
+### 更新检测算法优化:条件请求 + 写回 + 排序修复
+- 🔴 **「全部刷新」发现新版即写回缓存**:checkUpdates 检测到新 tag(或同 tag 但 updatedAt 变化)后,把最新 release 直接写入 `cache.releases` 头部——NEW 角标与卡片数据一步到位,不再"只报不写";无缓存的首个 release 也会判新(原来漏报)
+- 🟡 **ETag 条件请求(304 不扣额度)**:fetchReleases/fetchRepoInfo 支持 If-None-Match;checkUpdates 与 refreshStars 携带上次 etag,未变化返回 304 免费判定,并保存新 etag;store 新增 etag/repoEtag 字段
+- 🟡 **额度熔断**:按响应头 x-ratelimit-remaining 跟踪剩余配额,耗尽后停止检查并将剩余仓库如实上报(`code: "rate_limit"`);check-updates 响应新增 `remaining`
+- 🟡 **合并排序修复**:GET /software/:id/releases 合并去重后按 publishedAt 降序——修复新版本被追加到队尾、LATEST 主卡仍是旧版本的 bug
+- 🟢 **日期语义对齐**:卡片/排序时间优先取最新 release 发布时间(有版本时以版本为准,无 release 才退化到仓库推送时间);卡片标签区分「发布/推送/添加」
+- 🟢 **updatedAt 采集**:normalizeRelease 增加 updatedAt(检测同 tag 资产重传/重新发布)
+- 测试新增 6 例(写回/304/熔断/repoEtag/合并排序/updatedAt),**38 例全绿**
+- 注:存量数据首次刷新时因无 etag 走全量请求,之后自动转为条件请求
+
 ## v0.3.7 (2026-08-07)
 
 ### 卡片日期统一为「推送日期」

@@ -66,6 +66,8 @@
   .sort{display:flex;align-items:center;gap:6px;margin:8px 0 12px}
   .sort .dir{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:15px;line-height:1}
   .sort .dir:hover{border-color:var(--pink);color:var(--pink)}
+  .sort .btn.on{background:var(--pink);border-color:var(--pink);color:var(--on-pink);font-weight:500}
+  .sort .btn.on:hover{background:var(--pink);color:var(--on-pink)}
 
   /* ---------- 主体 ---------- */
   main{max-width:1180px;margin:0 auto;padding:6px 20px 80px}
@@ -150,7 +152,7 @@
 <header>
   <div class="bar">
     <div class="logo">软件<b>下载</b>中心</div>
-    <input class="inp" id="q" placeholder="搜索软件 / 仓库 / 备注…">
+    <input class="inp" id="q" placeholder="搜索软件 / 仓库 / 备注…" aria-label="搜索软件" autocomplete="off" spellcheck="false">
     <div class="seg" id="plat"><button data-p="all" class="on">全部</button><button data-p="win">Win</button><button data-p="mac">Mac</button><button data-p="linux">Lin</button></div>
     <button class="btn" id="bAdd">+ 添加</button>
     <button class="btn" id="bBatch">批量添加</button>
@@ -161,11 +163,9 @@
   <div class="srow">
     <div class="stats" id="stats"></div>
     <div class="sort">
-      <select class="sel" id="bSort" title="排序方式">
-        <option value="date">按推送日期</option>
-        <option value="stars">按 Star</option>
-        <option value="name">按名称</option>
-      </select>
+      <button class="btn sort-btn on" data-sort="date" title="按推送日期(最后一次推送到 GitHub)">按推送日期</button>
+      <button class="btn sort-btn" data-sort="stars" title="按 Star 数">按 Star</button>
+      <button class="btn sort-btn" data-sort="name" title="按名称">按名称</button>
       <button class="dir" id="bDir" title="切换升序 / 降序">↓</button>
     </div>
   </div>
@@ -185,10 +185,10 @@
 <div class="ov" id="ovEdit">
   <div class="modal" style="max-width:520px">
     <h3 id="editTitle">添加软件</h3>
-    <div class="row"><label>名称（留空自动用仓库名）</label><input id="fName" placeholder="如：Tools Center"></div>
-    <div class="row"><label>GitHub 仓库链接 <span style="color:var(--red)">*</span></label><input id="fRepo" placeholder="https://github.com/owner/repo 或 owner/repo"><div class="tips">添加后自动拉取最新 Release</div></div>
-    <div class="row"><label>分类</label><input id="fCat" placeholder="如：工具 / 插件 / 脚本"></div>
-    <div class="row"><label>备注（自定义简介，留空自动显示仓库描述）</label><textarea id="fNote" style="min-height:48px"></textarea></div>
+    <div class="row"><label for="fName">名称（留空自动用仓库名）</label><input id="fName" placeholder="如：Tools Center" autocomplete="off"></div>
+    <div class="row"><label for="fRepo">GitHub 仓库链接 <span style="color:var(--red)">*</span></label><input id="fRepo" placeholder="https://github.com/owner/repo 或 owner/repo" autocomplete="off"><div class="tips">添加后自动拉取最新 Release</div></div>
+    <div class="row"><label for="fCat">分类</label><input id="fCat" placeholder="如：工具 / 插件 / 脚本" autocomplete="off"></div>
+    <div class="row"><label for="fNote">备注（自定义简介，留空自动显示仓库描述）</label><textarea id="fNote" style="min-height:48px" autocomplete="off"></textarea></div>
     <div class="row"><div class="err" id="editErr"></div></div>
     <div class="mfoot"><button class="btn" id="btnEditCancel">取消</button><button class="btn pri" id="btnEditSave">保存</button></div>
   </div>
@@ -198,7 +198,7 @@
 <div class="ov" id="ovBatch">
   <div class="modal" style="max-width:560px">
     <h3>批量添加软件</h3>
-    <div class="row"><label>每行一个仓库（支持 owner/repo 或完整链接）</label><textarea id="fBatch" placeholder="Simiely/tools-center&#10;https://github.com/Simiely/knowledge-base&#10;microsoft/PowerToys"></textarea><div class="tips" id="batchStat">将逐条校验并添加，重复仓库自动跳过</div></div>
+    <div class="row"><label for="fBatch">每行一个仓库（支持 owner/repo 或完整链接）</label><textarea id="fBatch" placeholder="Simiely/tools-center&#10;https://github.com/Simiely/knowledge-base&#10;microsoft/PowerToys" autocomplete="off"></textarea><div class="tips" id="batchStat">将逐条校验并添加，重复仓库自动跳过</div></div>
     <div class="row"><div class="err" id="batchErr"></div></div>
     <div class="mfoot"><button class="btn" id="btnBatchCancel">取消</button><button class="btn pri" id="btnBatchGo">开始添加</button></div>
   </div>
@@ -208,20 +208,18 @@
 <div class="ov" id="ovSet">
   <div class="modal" style="max-width:520px">
     <h3>设置</h3>
-    <div class="row"><label>GitHub Token（可选）</label><div style="display:flex;gap:6px"><input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库" style="flex:1"><button class="btn" id="btnTokenClear" title="清除已保存的 Token">清除</button></div><div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时</div></div>
-    <div class="row"><label>代理地址（可选）</label><input id="fProxy" placeholder="如 http://127.0.0.1:7890"><div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div></div>
-    <div class="row"><label>「显示更早」每次增量</label><input id="fPerPage" type="number" min="1" max="50"></div>
-    <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><label style="font-weight:500;color:var(--fg)">WebDAV 云同步</label><div class="tips">登录后上传/下载软件清单数据——本地与云端两个目录桥接，换机/重装不丢</div></div>
-    <div class="row"><label>WebDAV 地址</label><input id="fWdUrl" placeholder="留空使用默认 http://192.168.2.1:6086/"></div>
-    <div class="row"><label>用户名</label><input id="fWdUser" placeholder="WebDAV 账号"></div>
-    <div class="row"><label>密码</label><input id="fWdPass" type="password" placeholder="输入 WebDAV 密码"></div>
+    <div class="row"><label for="fToken">GitHub Token（可选）</label><div style="display:flex;gap:6px"><input id="fToken" type="password" placeholder="ghp_... 提高速率并支持私有仓库" style="flex:1" autocomplete="new-password"><button class="btn" id="btnTokenClear" title="清除已保存的 Token">清除</button></div><div class="tips">无 Token 公共 API 限 60 次/小时；配置后 5000 次/小时，且推送日期批量采集更快（一次请求查 50 个仓库）</div></div>
+    <div class="row"><label for="fProxy">代理地址（可选）</label><input id="fProxy" placeholder="如 http://127.0.0.1:7890" autocomplete="off"><div class="tips">大陆网络直连 GitHub 不稳时填写，留空直连</div></div>
+    <div class="row"><label for="fPerPage">「显示更早」每次增量</label><input id="fPerPage" type="number" min="1" max="50" autocomplete="off"></div>
+    <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><div style="font-weight:500;color:var(--fg)">WebDAV 云同步</div><div class="tips">登录后「一键同步」双向备份软件清单——先拉远端合并进本地、再上传合并后全量，换机/重装不丢。远端保留最近 1 份时间戳备份</div></div>
+    <div class="row"><label for="fWdUrl">WebDAV 地址</label><input id="fWdUrl" placeholder="留空使用默认 http://192.168.2.1:6086/" autocomplete="off"></div>
+    <div class="row"><label for="fWdUser">用户名</label><input id="fWdUser" placeholder="WebDAV 账号" autocomplete="off"></div>
+    <div class="row"><label for="fWdPass">密码</label><input id="fWdPass" type="password" placeholder="输入 WebDAV 密码" autocomplete="new-password"></div>
     <div class="row"><div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn" id="btnWdSave">保存配置</button>
-      <button class="btn" id="btnWdTest">测试</button>
-      <button class="btn" id="btnWdUp">上传到云端</button>
-      <button class="btn" id="btnWdDown">从云端下载</button>
-      <button class="btn" style="color:var(--red)" id="btnWdClear">清空</button>
-    </div><div class="tips" id="wdStatus">填写 WebDAV 地址/账号/密码后点「保存配置」</div></div>
+      <button class="btn pri" id="btnWdTest">🔌 测试保存</button>
+      <button class="btn" id="btnWdSync">🔄 一键同步</button>
+      <button class="btn" style="color:var(--red)" id="btnWdClear">清除配置</button>
+    </div><div class="tips" id="wdStatus">填写地址/账号/密码后点「测试保存」——连接成功即自动保存配置</div></div>
     <div class="row"><div class="err" id="setErr"></div></div>
     <div class="mfoot"><button class="btn" id="btnSetCancel">取消</button><button class="btn pri" id="btnSetSave">保存</button></div>
   </div>
@@ -283,22 +281,25 @@ function catColor(cat) {
   return map[cat] || "#888780";
 }
 function tileText(name) { return (name || "?").slice(0, 2).toUpperCase(); }
-function platOf(s) { return (s.releases || []).flatMap((r) => (r.assets || []).map((a) => a.platform)); }
+function platOf(s) { const rs = Array.isArray(s.releases) ? s.releases : []; return rs.flatMap((r) => (Array.isArray(r?.assets) ? r.assets : []).map((a) => a.platform)); }
 function latestOf(s) { return (s.releases || [])[0] || null; }
 /* 简介双来源:自定义 note 优先,否则显示自动获取的仓库描述 */
 function intro(s) { return (s.note && s.note.trim()) ? s.note.trim() : (s.desc || ""); }
-/* 推送日期:仓库最后推送(pushedAt)优先,未采集时退化为 release 发布时间/创建时间 */
-function byDate(s) { const r = s.pushedAt || s.releases?.[0]?.publishedAt; return r ? Date.parse(r) : (s.createdAt || 0); }
+/* 排序时间:统一用推送日期(pushedAt=最后一次推到 GitHub);未采集 → 0(排最后,自动补采后即有) */
+function byDate(s) {
+  const r = s.pushedAt;
+  return r ? Date.parse(r) : 0;
+}
 function fmtStars(n) { return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); }
-/* 级联排序:主排序相同 → 更新时间 → 名称兜底;dir 控制主排序方向(次级固定) */
+/* 级联排序:主排序相同 → 发布时间 → Star → 名称兜底;dir 控制主排序方向(次级固定降序) */
 function cmpSort(a, b) {
   const da = byDate(a), db = byDate(b);
   const sa = a.stars ?? -1, sb = b.stars ?? -1;
   const na = (a.name || "").localeCompare(b.name || "", "zh");
   const f = state.dir === "asc" ? 1 : -1;
   if (state.sortBy === "name") return (na * f) || (db - da) || (sb - sa);
-  if (state.sortBy === "stars") return ((sb - sa) * f) || (db - da) || na;
-  return ((db - da) * f) || (sb - sa) || na;
+  if (state.sortBy === "stars") return ((sa - sb) * f) || (db - da) || na;
+  return ((da - db) * f) || (sb - sa) || na;
 }
 
 async function copyText(text) {
@@ -315,6 +316,12 @@ async function copyText(text) {
 }
 
 /* ================= 数据加载 ================= */
+let pendingRetry = 0; // 待采集自动重试次数(最多 4 次,间隔递增 4s/8s/12s/16s)
+function scheduleRetry() {
+  if (pendingRetry >= 4) return;
+  pendingRetry++;
+  setTimeout(loadAll, 4000 * pendingRetry);
+}
 async function loadAll() {
   try {
     const d = await api("/software");
@@ -322,6 +329,9 @@ async function loadAll() {
     state.map = {};
     d.software.forEach((s) => (state.map[s.id] = { ...s, page: 1 }));
     render();
+    // 存在"推送日期待采集"(后端在后台补采) → 自动轮询刷新直到补齐;补齐后计数清零
+    if (d.software.some((s) => !s.pushedAt)) scheduleRetry();
+    else pendingRetry = 0;
   } catch (e) { toast(e.message, true); }
 }
 
@@ -362,7 +372,8 @@ function card(s) {
   const latest = latestOf(s);
   const verHtml = latest ? `<span class="ver">${esc(latest.tag)}</span>` : `<span class="ver none">暂无 Release</span>`;
   const newHtml = state.hasNew[s.id] ? '<span class="new">NEW</span>' : "";
-  const time = s.pushedAt || (latest ? latest.publishedAt : null) || s.createdAt;
+  // 卡片日期 = 推送日期(最后推到 GitHub);未采集时显示"待采集"提示(每个仓库都有 pushed_at,不显示=还没采到)
+  const time = s.pushedAt ? s.pushedAt : null;
   return `<div class="card" data-id="${esc(s.id)}">
     <span class="hint">查看详情</span>
     <div style="display:flex;gap:10px;align-items:flex-start">
@@ -374,10 +385,11 @@ function card(s) {
       ${newHtml}
     </div>
     ${intro(s) ? `<div class="note">${esc(intro(s))}</div>` : ""}
-    <div class="time"><span>推送 ${fmtTime(time)}</span>${s.stars != null ? `<span class="star">★ ${fmtStars(s.stars)}</span>` : ""}</div>
+    <div class="time">${time ? `<span>推送 ${fmtTime(time)}</span>` : '<span style="color:var(--faint)">推送日期待采集</span>'}${s.stars != null ? `<span class="star">★ ${fmtStars(s.stars)}</span>` : ""}</div>
   </div>`;
 }
 function render() {
+  renderSortBtns();
   const q = state.q.trim().toLowerCase();
   const shown = state.software.filter((s) => {
     if (q && ![s.name, s.owner + "/" + s.repo, s.category, intro(s)].join(" ").toLowerCase().includes(q)) return false;
@@ -385,7 +397,11 @@ function render() {
     if (state.plat !== "all" && !platOf(s).includes(state.plat)) return false;
     return true;
   });
-  $("grid").innerHTML = shown.sort(cmpSort).map(card).join("");
+  // 单卡片渲染容错:某条数据异常只跳过该卡,不影响整页(防"点排序后空白")
+  const html = shown.sort(cmpSort).map((s) => {
+    try { return card(s); } catch { return ""; }
+  }).join("");
+  $("grid").innerHTML = html;
   $("empty").hidden = shown.length > 0;
   $("emptyText").textContent = state.software.length ? "没有匹配的软件 — 试试清空筛选条件" : "清单为空，点击右上角「+ 添加」开始收录";
   renderTabs();
@@ -403,7 +419,7 @@ function openDetail(id) {
   const s = state.map[id];
   if (!s) return;
   state.detailId = id;
-  const rels = s.releases || [];
+  const rels = Array.isArray(s.releases) ? s.releases : [];
   const latest = rels[0];
   const hist = rels.slice(1);
   const col = catColor(s.category);
@@ -462,13 +478,13 @@ async function openSettings() {
     $("fToken").placeholder = d.settings.githubTokenHas ? "已设置,留空保留" : "ghp_... 提高速率并支持私有仓库";
     $("fProxy").value = d.settings.proxy || "";
     $("fPerPage").value = d.settings.perPage || 3;
-    $("fWdUrl").value = d.settings.webdavUrl || "";
+    $("fWdUrl").value = (d.settings.webdavUrl && d.settings.webdavUrl !== d.settings.defaultUrl) ? d.settings.webdavUrl : "";
     $("fWdUser").value = d.settings.webdavUser || "";
     $("fWdPass").value = "";
-    $("fWdPass").placeholder = d.settings.webdavHas ? "已设置,留空保留" : "输入 WebDAV 密码";
+    $("fWdPass").placeholder = d.settings.webdavHas ? "已保存（留空保持不变）" : "输入 WebDAV 密码";
     $("wdStatus").textContent = d.settings.webdavHas
-      ? (d.settings.webdavUrl ? "已配置,可直接上传/下载" : "已配置(使用默认地址),可直接上传/下载")
-      : "尚未配置 WebDAV(地址留空将使用默认 " + (d.settings.defaultUrl || "http://192.168.2.1:6086/") + ")";
+      ? "已配置（" + (d.settings.webdavUrl || "默认地址") + "），可直接「一键同步」"
+      : "尚未配置（地址留空将使用默认 " + (d.settings.defaultUrl || "http://192.168.2.1:6086/") + "）";
     $("setErr").style.display = "none";
     $("ovSet").classList.add("show");
   } catch (e) { toast(e.message, true); }
@@ -590,7 +606,19 @@ $("btnBatchGo").addEventListener("click", async () => {
 
 /* 全部刷新 + 设置 */
 $("bRefreshAll").addEventListener("click", checkUpdates);
-$("bSort").addEventListener("change", (e) => { state.sortBy = e.target.value; render(); });
+/* 排序:独立按钮直接点击;选中态高亮 */
+function renderSortBtns() {
+  document.querySelectorAll(".sort-btn").forEach((b) => {
+    b.classList.toggle("on", b.dataset.sort === state.sortBy);
+  });
+}
+document.querySelectorAll(".sort-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    state.sortBy = b.dataset.sort;
+    renderSortBtns();
+    render();
+  });
+});
 $("bDir").addEventListener("click", () => {
   state.dir = state.dir === "asc" ? "desc" : "asc";
   $("bDir").textContent = state.dir === "asc" ? "↑" : "↓";
@@ -615,40 +643,84 @@ $("btnTokenClear").addEventListener("click", async () => {
   } catch (e) { toast(e.message, true); }
 });
 
-/* ---------- WebDAV 云同步 ---------- */
-async function wdAct(path, opts, busy) {
-  const st = $("wdStatus");
-  st.textContent = busy;
+/* ---------- WebDAV 云同步(范式参考 edge-multi-account-cookie:测试即保存 + 一键同步) ---------- */
+const WD_URL_RE = /^https?:\/\/.+/;
+function wdCollect() {
+  return { url: $("fWdUrl").value.trim(), user: $("fWdUser").value.trim(), pass: $("fWdPass").value };
+}
+function wdSetStatus(msg, err) {
+  $("wdStatus").textContent = (err ? "❌ " : "✅ ") + msg;
+}
+/** 测试保存:连接成功 → 自动保存配置;失败 → 不保存 */
+async function handleWdTest() {
+  const cfg = wdCollect();
+  const btn = $("btnWdTest");
+  btn.disabled = true; btn.textContent = "测试保存中…";
   try {
-    const d = await api(path, { method: "POST", ...opts });
-    st.textContent = "✅ " + d.message;
-    toast(d.message);
-    return d;
+    if (cfg.url && !WD_URL_RE.test(cfg.url)) throw new Error("URL 格式不正确（需 http/https）");
+    if (!cfg.user && !cfg.pass) throw new Error("请填写用户名与密码（已保存过的可只填一项留空复用）");
+    const d = await api("/webdav/test", { method: "POST", body: JSON.stringify(cfg) });
+    // 连通 → 自动保存(密码留空 = 保留已存)
+    const saved = await api("/webdav/config", { method: "POST", body: JSON.stringify(cfg) });
+    $("fWdPass").value = "";
+    $("fWdPass").placeholder = "已保存（留空保持不变）";
+    wdSetStatus(d.message + "，配置已自动保存");
+    toast(d.message + "，配置已自动保存");
+    return saved;
   } catch (e) {
-    st.textContent = "❌ " + e.message;
+    wdSetStatus(e.message + "（未保存配置）", true);
     toast(e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = "🔌 测试保存";
   }
 }
-$("btnWdSave").addEventListener("click", async () => {
+/** 一键同步:先拉远端合并进本地(只增不删) → 再上传合并后全量 */
+async function handleWdSync() {
+  const btn = $("btnWdSync");
+  btn.disabled = true; btn.textContent = "同步中…";
   try {
-    const d = await api("/webdav/config", { method: "POST", body: JSON.stringify({ url: $("fWdUrl").value.trim(), user: $("fWdUser").value.trim(), pass: $("fWdPass").value }) });
-    $("fWdPass").value = ""; $("fWdPass").placeholder = "已设置,留空保留";
-    $("wdStatus").textContent = "✅ " + d.message; toast(d.message);
-  } catch (e) { $("wdStatus").textContent = "❌ " + e.message; toast(e.message, true); }
-});
-$("btnWdTest").addEventListener("click", () => wdAct("/webdav/test", {}, "测试中…"));
-$("btnWdUp").addEventListener("click", () => wdAct("/webdav/upload", {}, "上传中…"));
-$("btnWdDown").addEventListener("click", async () => {
-  if (!confirm("下载会覆盖本地清单数据(以云端为准),确定继续吗?")) return;
-  await wdAct("/webdav/download", {}, "下载中…");
-  await loadAll();
-});
-$("btnWdClear").addEventListener("click", async () => {
-  if (!confirm("确认清空 WebDAV 配置?")) return;
-  await wdAct("/webdav/clear", {}, "清空中…");
-  $("fWdUrl").value = ""; $("fWdUser").value = ""; $("fWdPass").value = "";
-  $("fWdPass").placeholder = "输入 WebDAV 密码";
-});
+    const d = await api("/webdav/sync", { method: "POST", timeout: 60000 });
+    const parts = [];
+    if (d.pulled) {
+      const p = d.pulled;
+      const acts = [];
+      if (p.imported) acts.push(`新增 ${p.imported}`);
+      if (p.updated) acts.push(`更新 ${p.updated}`);
+      if (p.kept) acts.push(`保留 ${p.kept} 个本地更新`);
+      parts.push(`拉取「${p.filename}」${acts.length ? acts.join("、") : "无变化"}`);
+    } else {
+      parts.push("远端无备份，已创建首份");
+    }
+    parts.push(`上传「${d.pushed.filename}」`);
+    const msg = "同步完成：" + parts.join("；");
+    wdSetStatus(msg);
+    toast(msg);
+    await loadAll();
+    return d;
+  } catch (e) {
+    wdSetStatus(e.message, true);
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = "🔄 一键同步";
+  }
+}
+async function handleWdClear() {
+  if (!confirm("确定清除 WebDAV 配置吗？远端备份文件不会被删除。")) return;
+  try {
+    const d = await api("/webdav/clear", { method: "POST" });
+    $("fWdUrl").value = ""; $("fWdUser").value = ""; $("fWdPass").value = "";
+    $("fWdPass").placeholder = "输入 WebDAV 密码";
+    wdSetStatus(d.message);
+    toast(d.message);
+  } catch (e) { wdSetStatus(e.message, true); toast(e.message, true); }
+}
+$("btnWdTest").addEventListener("click", handleWdTest);
+$("btnWdSync").addEventListener("click", handleWdSync);
+$("btnWdClear").addEventListener("click", handleWdClear);
+// 输入框回车 = 触发测试保存
+for (const el of ["fWdUrl", "fWdUser", "fWdPass"]) {
+  $(el).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); handleWdTest(); } });
+}
 
 /* 遮罩点击关闭 + Esc */
 document.querySelectorAll(".ov").forEach((ov) => ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("show"); }));
